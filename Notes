@@ -1,0 +1,35 @@
+Notes:
+What this Makefile does
+Compilation
+- Compiles your hybrid_demo.c
+- Compiles all required Kyber reference .c files
+- Includes the Kyber header directory (-Ikyber/ref)
+- Optimizes with -O3 and enables warnings
+Linking
+- Links against libsodium, which provides X25519/ECDHE and hashing
+Output
+- Produces a single executable: hybrid_demo
+Cleanup
+- make clean removes the binary and any .o files
+
+Project Structure:
+
+project/
+│
+├── hybrid_demo.c
+└── kyber/
+    └── ref/
+        ├── api.h
+        ├── kem.c
+        ├── indcpa.c
+        ├── poly.c
+        ├── ntt.c
+        ├── reduce.c
+        ├── symmetric-shake.c
+        └── (other Kyber ref files)
+		
+A Makefile that reliably builds your hybrid Kyber + ECDHE demo needs to do three things cleanly:
+
+- Compile all required Kyber ref sources
+- Compile your hybrid_demo.c
+- Link everything with -lsodium
