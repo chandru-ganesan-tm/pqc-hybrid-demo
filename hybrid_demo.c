@@ -36,8 +36,17 @@ static void print_hex(const char *label, const unsigned char *buf, size_t len)
 
 static void print_keysizes()
 {
-    printf("key sizes\n");
-    printf("CRYPTO_PUBLICKEYBYTES (Kyber pubkey) = %d\n", CRYPTO_PUBLICKEYBYTES);
+    printf("key sizes:\n");
+
+    if(KYBER_K == 2) 
+        printf("Kyber variant: Kyber512\n");
+    else if(KYBER_K == 3) 
+    printf("Kyber variant: Kyber768\n");
+    else if(KYBER_K == 4) 
+        printf("Kyber variant: Kyber1024\n");
+
+
+   printf("CRYPTO_PUBLICKEYBYTES (Kyber pubkey) = %d\n", CRYPTO_PUBLICKEYBYTES);
     printf("CRYPTO_SECRETKEYBYTES (kyber secret) = %d\n", CRYPTO_SECRETKEYBYTES);
     printf("CRYPTO_CIPHERTEXTBYTES (kyber ct) = %d\n", CRYPTO_CIPHERTEXTBYTES);
     printf("CRYPTO_BYTES (kyber ss) = %d\n", CRYPTO_BYTES);

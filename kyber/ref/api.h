@@ -5,7 +5,7 @@
 
 #define pqcrystals_kyber512_SECRETKEYBYTES 1632
 #define pqcrystals_kyber512_PUBLICKEYBYTES 800
-#define pqcrystals_kyber512_CIPHERTEXTBYTES 768
+#define pqcrystals_kyber512_CIPHERTEXTBYTES 768-
 #define pqcrystals_kyber512_KEYPAIRCOINBYTES 64
 #define pqcrystals_kyber512_ENCCOINBYTES 32
 #define pqcrystals_kyber512_BYTES 32

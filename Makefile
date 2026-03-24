@@ -4,6 +4,12 @@ CC      = gcc
 CFLAGS = -g -O0 -Wall -Ikyber/ref
 LDFLAGS = -lsodium
 
+# Define Kyber variant (2=Kyber512, 3=Kyber768, 4=Kyber1024)
+KYBER_K ?= 3
+
+# Add KYBER_K definition to compiler flags
+CFLAGS += -DKYBER_K=$(KYBER_K)
+
 # Kyber reference implementation sources
 KYBER_SRC = \
     kyber/ref/kem.c \
