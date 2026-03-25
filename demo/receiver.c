@@ -5,6 +5,7 @@
 
 #include "kyber/ref/api.h"
 #include "kyber/ref/kem.h"
+#include "static_kyber_keys.h"
 
 #define HYBRID_KEY_BYTES 32   // 256-bit symmetric key
 
@@ -15,6 +16,27 @@ static void print_hex(const char *label, const unsigned char *buf, size_t len) {
     printf("\n");
 }
 
+static void print_keysizes()
+{
+    printf("key sizes:\n");
+
+    if(KYBER_K == 2) 
+        printf("Kyber variant: Kyber512\n");
+    else if(KYBER_K == 3) 
+    printf("Kyber variant: Kyber768\n");
+    else if(KYBER_K == 4) 
+        printf("Kyber variant: Kyber1024\n");
+
+
+    printf("CRYPTO_PUBLICKEYBYTES (Kyber pubkey) = %d\n", CRYPTO_PUBLICKEYBYTES);
+    printf("CRYPTO_SECRETKEYBYTES (kyber secret) = %d\n", CRYPTO_SECRETKEYBYTES);
+    printf("CRYPTO_CIPHERTEXTBYTES (kyber ct) = %d\n", CRYPTO_CIPHERTEXTBYTES);
+    printf("CRYPTO_BYTES (kyber ss) = %d\n", CRYPTO_BYTES);
+    printf("HYBRID_KEY_BYTES (final symmetric key) = %d\n", HYBRID_KEY_BYTES);
+    printf("NONCEBYTES = %d\n", crypto_secretbox_NONCEBYTES);
+    printf("SESSIONKEYBYTES = %d\n\n", crypto_kx_SESSIONKEYBYTES);
+}
+
 int main(void) {
     if (sodium_init() < 0) {
         fprintf(stderr, "libsodium init failed\
@@ -22,23 +44,21 @@ int main(void) {
         return 1;
     }
 
+     print_keysizes();
+
     // Generate receiver ECDH keypair
     unsigned char recv_kx_pk[crypto_kx_PUBLICKEYBYTES];
     unsigned char recv_kx_sk[crypto_kx_SECRETKEYBYTES];
     if (crypto_kx_keypair(recv_kx_pk, recv_kx_sk) != 0) {
-        fprintf(stderr, "Receiver crypto_kx_keypair failed\
-");
+        fprintf(stderr, "Receiver crypto_kx_keypair failed\n");
         return 1;
     }
 
-    // Generate receiver Kyber keypair
+    // Use static receiver Kyber keypair (generated once, hardcoded)
     unsigned char recv_kyber_pk[CRYPTO_PUBLICKEYBYTES];
     unsigned char recv_kyber_sk[CRYPTO_SECRETKEYBYTES];
-    if (crypto_kem_keypair(recv_kyber_pk, recv_kyber_sk) != 0) {
-        fprintf(stderr, "Receiver crypto_kem_keypair failed\
-");
-        return 1;
-    }
+    memcpy(recv_kyber_pk, SERVER_KYBER_PK, CRYPTO_PUBLICKEYBYTES);
+    memcpy(recv_kyber_sk, SERVER_KYBER_SK, CRYPTO_SECRETKEYBYTES);
 
     // Output receiver public keys for sender to use
     printf("Receiver ECDH public key (hex): ");
@@ -54,7 +74,10 @@ int main(void) {
     printf("Enter sender ECDH public key (hex, 64 chars): ");
     for (int i = 0; i < crypto_kx_PUBLICKEYBYTES; i++) {
         unsigned int val;
-        scanf("%2x", &val);
+        if (scanf("%2x", &val) != 1) {
+            fprintf(stderr, "Invalid input for ECDH public key\n");
+            return 1;
+        }
         sender_kx_pk[i] = (unsigned char)val;
     }
 
@@ -63,7 +86,10 @@ int main(void) {
     printf("Enter Kyber ciphertext (hex, %d chars): ", CRYPTO_CIPHERTEXTBYTES * 2);
     for (int i = 0; i < CRYPTO_CIPHERTEXTBYTES; i++) {
         unsigned int val;
-        scanf("%2x", &val);
+        if (scanf("%2x", &val) != 1) {
+            fprintf(stderr, "Invalid input for Kyber ciphertext\n");
+            return 1;
+        }
         kyber_ct[i] = (unsigned char)val;
     }
 
@@ -72,25 +98,34 @@ int main(void) {
     printf("Enter nonce (hex, %d chars): ", crypto_secretbox_NONCEBYTES * 2);
     for (int i = 0; i < crypto_secretbox_NONCEBYTES; i++) {
         unsigned int val;
-        scanf("%2x", &val);
+        if (scanf("%2x", &val) != 1) {
+            fprintf(stderr, "Invalid input for nonce\n");
+            return 1;
+        }
         nonce[i] = (unsigned char)val;
     }
 
-    // Receive encrypted message (hex, variable length)
+    // Receive encrypted message (hex, continuous string)
     unsigned char ciphertext[1024];
     size_t ciphertext_len = 0;
-    printf("Enter encrypted message (hex, variable length): ");
-    char hex_byte[3] = {0};
-    while (scanf("%2s", hex_byte) == 1) {
-        if (ciphertext_len >= sizeof(ciphertext)) {
-            fprintf(stderr, "Ciphertext too long\
-");
-            return 1;
-        }
+    char hex_input[4096];
+    printf("Enter encrypted message (hex, continuous string): ");
+    if (scanf("%s", hex_input) != 1) {
+        fprintf(stderr, "Invalid input for encrypted message\n");
+        return 1;
+    }
+    
+    // Parse hex string to bytes
+    size_t hex_len = strlen(hex_input);
+    if (hex_len % 2 != 0 || hex_len / 2 > sizeof(ciphertext)) {
+        fprintf(stderr, "Invalid hex input length\n");
+        return 1;
+    }
+    ciphertext_len = hex_len / 2;
+    for (size_t i = 0; i < ciphertext_len; i++) {
         unsigned int val;
-        sscanf(hex_byte, "%2x", &val);
-        ciphertext[ciphertext_len++] = (unsigned char)val;
-        if (getchar() == '\n') break;
+        sscanf(hex_input + (i * 2), "%2x", &val);
+        ciphertext[i] = (unsigned char)val;
     }
 
     // Compute ECDH shared secret (server_rx)
@@ -128,13 +163,11 @@ int main(void) {
     // Decrypt message
     unsigned char decrypted[1024];
     if (crypto_secretbox_open_easy(decrypted, ciphertext, ciphertext_len, nonce, hybrid_key) != 0) {
-        fprintf(stderr, "Decryption failed\
-");
+        fprintf(stderr, "Decryption failed\n");
         return 1;
     }
 
-    printf("Decrypted message: %s\
-", decrypted);
+    printf("Decrypted message: %s\n", decrypted);
 
     return 0;
 }

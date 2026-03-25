@@ -5,6 +5,7 @@
 
 #include "kyber/ref/api.h"
 #include "kyber/ref/kem.h"
+#include "static_kyber_keys.h"
 
 #define HYBRID_KEY_BYTES 32   // 256-bit symmetric key
 #define MESSAGE "Hello, this is a secret message!"
@@ -16,6 +17,26 @@ static void print_hex(const char *label, const unsigned char *buf, size_t len) {
     printf("\n");
 }
 
+static void print_keysizes()
+{
+    printf("key sizes:\n");
+
+    if(KYBER_K == 2) 
+        printf("Kyber variant: Kyber512\n");
+    else if(KYBER_K == 3) 
+    printf("Kyber variant: Kyber768\n");
+    else if(KYBER_K == 4) 
+        printf("Kyber variant: Kyber1024\n");
+
+    printf("CRYPTO_PUBLICKEYBYTES (Kyber pubkey) = %d\n", CRYPTO_PUBLICKEYBYTES);
+    printf("CRYPTO_SECRETKEYBYTES (kyber secret) = %d\n", CRYPTO_SECRETKEYBYTES);
+    printf("CRYPTO_CIPHERTEXTBYTES (kyber ct) = %d\n", CRYPTO_CIPHERTEXTBYTES);
+    printf("CRYPTO_BYTES (kyber ss) = %d\n", CRYPTO_BYTES);
+    printf("HYBRID_KEY_BYTES (final symmetric key) = %d\n", HYBRID_KEY_BYTES);
+    printf("NONCEBYTES = %d\n", crypto_secretbox_NONCEBYTES);
+    printf("SESSIONKEYBYTES = %d\n\n", crypto_kx_SESSIONKEYBYTES);
+}
+
 int main(void) {
     if (sodium_init() < 0) {
         fprintf(stderr, "libsodium init failed\
@@ -23,23 +44,25 @@ int main(void) {
         return 1;
     }
 
-    // --- Assume receiver public keys are known (in real use, received from receiver) ---
+    print_keysizes();
+
+    // --- Use static receiver Kyber public key (same across all runs) ---
     unsigned char recv_kx_pk[crypto_kx_PUBLICKEYBYTES];
     unsigned char recv_kyber_pk[CRYPTO_PUBLICKEYBYTES];
 
     printf("Enter receiver ECDH public key (hex, 64 chars): ");
     for (int i = 0; i < crypto_kx_PUBLICKEYBYTES; i++) {
         unsigned int val;
-        scanf("%2x", &val);
+        if (scanf("%2x", &val) != 1) {
+            fprintf(stderr, "Invalid input for ECDH public key\n");
+            return 1;
+        }
         recv_kx_pk[i] = (unsigned char)val;
     }
 
-    printf("Enter receiver Kyber public key (hex, %d chars): ", CRYPTO_PUBLICKEYBYTES * 2);
-    for (int i = 0; i < CRYPTO_PUBLICKEYBYTES; i++) {
-        unsigned int val;
-        scanf("%2x", &val);
-        recv_kyber_pk[i] = (unsigned char)val;
-    }
+    // Use static Kyber public key (no need to input)
+    memcpy(recv_kyber_pk, SERVER_KYBER_PK, CRYPTO_PUBLICKEYBYTES);
+    printf("Using static receiver Kyber public key\n");
 
     // Generate sender ECDH keypair
     unsigned char sender_kx_pk[crypto_kx_PUBLICKEYBYTES];

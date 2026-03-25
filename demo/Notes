@@ -59,6 +59,35 @@ send(encrypted_message)
 server:
 decrypted_message = decrypt(hybrid_key, encrypted_message)
 
+Architecture Overview
+Current state: hybrid_demo.c does both client and server operations in a single program.
+
+Proposed split:
+
+Server (Receiver):
+
+1. Generate and output its keypairs:
+    ECDH public key (X25519)
+    Kyber public key
+2. Wait for client's ECDH public key and Kyber ciphertext
+    Perform server-side key derivation:
+    crypto_kx_server_session_keys() → ECDH shared secret
+    crypto_kem_dec() → Kyber shared secret
+    Derive hybrid key: H(ECDH_shared || Kyber_shared)
+3. Decrypt and display received message
+
+Client (Sender)
+1. Input server's keypairs (from server output)
+2. Generate own keypairs and perform key derivation:
+    crypto_kx_client_session_keys() → ECDH shared secret
+    crypto_kem_enc() → Kyber ciphertext + shared secret
+3. Derive hybrid key
+4. Encrypt message with crypto_secretbox_easy()
+5. Output: sender ECDH pubkey, Kyber ciphertext, nonce, encrypted message
+
+Server:  Generate keys → Output pubkeys → Read ciphertext/message → Decrypt
+Client:  Input pubkeys → Generate keys → Derive hybrid key → Encrypt → Send
+
 
 
 
