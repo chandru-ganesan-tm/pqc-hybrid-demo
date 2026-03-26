@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <sodium.h>
 
@@ -25,6 +26,11 @@
 
 #define HYBRID_KEY_BYTES 32   // final symmetric key size (256-bit)
 #define MESSAGE "Secret message!"
+
+// Timing helper
+static double get_time_diff(struct timespec start, struct timespec end) {
+    return (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+}
 
 // Helper to print hex
 static void print_hex(const char *label, const unsigned char *buf, size_t len)
@@ -47,17 +53,20 @@ static void print_keysizes()
 
 
    printf("CRYPTO_PUBLICKEYBYTES (Kyber pubkey) = %d\n", CRYPTO_PUBLICKEYBYTES);
-    printf("CRYPTO_SECRETKEYBYTES (kyber secret) = %d\n", CRYPTO_SECRETKEYBYTES);
-    printf("CRYPTO_CIPHERTEXTBYTES (kyber ct) = %d\n", CRYPTO_CIPHERTEXTBYTES);
-    printf("CRYPTO_BYTES (kyber ss) = %d\n", CRYPTO_BYTES);
-    printf("HYBRID_KEY_BYTES (final symmetric key) = %d\n", HYBRID_KEY_BYTES);
-    printf("NONCEBYTES = %d\n", crypto_secretbox_NONCEBYTES);
-    printf("SESSIONKEYBYTES = %d\n\n", crypto_kx_SESSIONKEYBYTES);
+   printf("CRYPTO_SECRETKEYBYTES (kyber secret) = %d\n", CRYPTO_SECRETKEYBYTES);
+   printf("CRYPTO_CIPHERTEXTBYTES (kyber ct) = %d\n", CRYPTO_CIPHERTEXTBYTES);
+   printf("CRYPTO_BYTES (kyber ss) = %d\n", CRYPTO_BYTES);
+   printf("HYBRID_KEY_BYTES (final symmetric key) = %d\n", HYBRID_KEY_BYTES);
+   printf("NONCEBYTES = %d\n", crypto_secretbox_NONCEBYTES);
+   printf("SESSIONKEYBYTES = %d\n\n", crypto_kx_SESSIONKEYBYTES);
     
 }
 
 int main(void)
 {
+    struct timespec start, end;
+    double ecdhe_keypair_time = 0, kyber_keypair_time = 0, kyber_encap_time = 0, kyber_decap_time = 0;
+    double key_derivation_time = 0, encryption_time = 0, decryption_time = 0;
 
     print_keysizes();
 
@@ -74,14 +83,18 @@ int main(void)
     // ============================================================
 
     // X25519 ECDH keypair
+    clock_gettime(CLOCK_MONOTONIC, &start);
     unsigned char srv_kx_pk[crypto_kx_PUBLICKEYBYTES];
     unsigned char srv_kx_sk[crypto_kx_SECRETKEYBYTES];
     if (crypto_kx_keypair(srv_kx_pk, srv_kx_sk) !=0) {
         fprintf(stderr, "server crypto_kx_keypair failed\n");
         return 1;
     }
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    ecdhe_keypair_time += get_time_diff(start, end);
 
     // Kyber KEM keypair
+    clock_gettime(CLOCK_MONOTONIC, &start);
     unsigned char srv_kyber_pk[CRYPTO_PUBLICKEYBYTES];
     unsigned char srv_kyber_sk[CRYPTO_SECRETKEYBYTES];
     crypto_kem_keypair(srv_kyber_pk, srv_kyber_sk);
@@ -89,11 +102,14 @@ int main(void)
         fprintf(stderr, "server crypto_kem_keypair failed\n");
         return 1;
     }
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    kyber_keypair_time += get_time_diff(start, end);
 
     // ============================================================
     // 2. CLIENT: generate classical ECDH keypair
     // ============================================================
 
+    clock_gettime(CLOCK_MONOTONIC, &start);
     unsigned char cli_kx_pk[crypto_kx_PUBLICKEYBYTES];
     unsigned char cli_kx_sk[crypto_kx_SECRETKEYBYTES];
     crypto_kx_keypair(cli_kx_pk, cli_kx_sk);
@@ -101,6 +117,8 @@ int main(void)
         fprintf(stderr, "client crypto_kx_keypair failed\n");
         return 1;
     }
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    ecdhe_keypair_time += get_time_diff(start, end);
 
     // In a real protocol:
     //   - Client receives srv_kx_pk and srv_kyber_pk from server
@@ -130,13 +148,14 @@ int main(void)
     }
 
     unsigned char ecdh_shared_client[crypto_kx_SESSIONKEYBYTES];
-    memcpy(ecdh_shared_client, cli_tx, crypto_kx_SESSIONKEYBYTES);\
+    memcpy(ecdh_shared_client, cli_tx, crypto_kx_SESSIONKEYBYTES);
     
     // Kyber Encapsulation: Process where the sender genetrates a random shared-secret and creates the cipher based on receiver's publickey (svr_kyber_pk)
     // Shared secret (kyber_ss_client) : Sender (client) generates a random shared-secret
     // Ciphertext (ct): Sender creates a ciphertext using reveiver (server) keyber publickey
     // Receiver (server) KEM publickey (svr_keyber_pk)
 
+    clock_gettime(CLOCK_MONOTONIC, &start);
     unsigned char ct[CRYPTO_CIPHERTEXTBYTES];
     unsigned char kyber_ss_client[CRYPTO_BYTES];
 
@@ -144,6 +163,8 @@ int main(void)
         fprintf(stderr, "Kyber encapsulation failed\n");
         return 1;
     }
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    kyber_encap_time = get_time_diff(start, end);
 
     // ============================================================
     // 4. SERVER: compute ECDH shared secret + Kyber decapsulation
@@ -168,11 +189,14 @@ int main(void)
     // Server private-key (srv_kyber_sk): Server KEM private key
 
     //   - Server uses ct + it's secret key to recover the same shared secret
+    clock_gettime(CLOCK_MONOTONIC, &start);
     unsigned char kyber_ss_server[CRYPTO_BYTES];
     if (crypto_kem_dec(kyber_ss_server, ct, srv_kyber_sk) != 0) {
         fprintf(stderr, "Kyber decapsulation failed\n");
         return 1;
     }
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    kyber_decap_time = get_time_diff(start, end);
 
      // Now client_tx should equal server_rx, and client_rx should equal server_tx
     if (!(memcmp(cli_tx, srv_rx, crypto_kx_SESSIONKEYBYTES) == 0 &&
@@ -191,6 +215,7 @@ int main(void)
     // 5. HYBRID KEY: hash(ECDH_shared || Kyber_shared)
     // ============================================================
 
+    clock_gettime(CLOCK_MONOTONIC, &start);
     unsigned char hybrid_client[HYBRID_KEY_BYTES];
     unsigned char hybrid_server[HYBRID_KEY_BYTES];
 
@@ -213,6 +238,8 @@ int main(void)
     crypto_generichash(hybrid_server, HYBRID_KEY_BYTES,
                        server_input, sizeof server_input,
                        NULL, 0);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    key_derivation_time = get_time_diff(start, end);
 
     // ============================================================
     // 6. Verify and display results
@@ -230,12 +257,15 @@ int main(void)
     printf("Hybrid key established successfully.\n");
     
     // Encrypt message using client hybrid key with crypto_secretbox_easy
+    clock_gettime(CLOCK_MONOTONIC, &start);
     unsigned char nonce[crypto_secretbox_NONCEBYTES];
     randombytes_buf(nonce, sizeof nonce);
 
     size_t message_len = sizeof(MESSAGE);
     unsigned char ciphertext[message_len + crypto_secretbox_MACBYTES];
     crypto_secretbox_easy(ciphertext, (const unsigned char *)MESSAGE, message_len, nonce, hybrid_client);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    encryption_time = get_time_diff(start, end);
 
     // Output sender's public key, kyber ciphertext, nonce, and encrypted message as hex
     printf("\nSender ECDH public key (hex): (%d bytes)", crypto_kx_PUBLICKEYBYTES);
@@ -255,16 +285,29 @@ int main(void)
     printf("\n");
     
     // Decrypt message
+    clock_gettime(CLOCK_MONOTONIC, &start);
     unsigned char decrypted[1024];
     if (crypto_secretbox_open_easy(decrypted, ciphertext, sizeof(ciphertext), nonce, hybrid_server) != 0) {
         fprintf(stderr, "Decryption failed\
 ");
         return 1;
     }
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    decryption_time = get_time_diff(start, end);
 
     printf("Decrypted message: %s\
 ", decrypted);
     printf("\n");
+
+    // Print timing results
+    printf("Timing Results:\n");
+    printf("ECDHE keypair generation: %.6f seconds\n", ecdhe_keypair_time);
+    printf("Kyber keypair generation: %.6f seconds\n", kyber_keypair_time);
+    printf("Kyber encapsulation: %.6f seconds\n", kyber_encap_time);
+    printf("Kyber decapsulation: %.6f seconds\n", kyber_decap_time);
+    printf("Key derivation: %.6f seconds\n", key_derivation_time);
+    printf("Encryption: %.6f seconds\n", encryption_time);
+    printf("Decryption: %.6f seconds\n", decryption_time);
     
     return 0;
 

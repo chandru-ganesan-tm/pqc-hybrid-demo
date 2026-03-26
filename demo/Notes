@@ -89,6 +89,37 @@ Server:  Generate keys → Output pubkeys → Read ciphertext/message → Decryp
 Client:  Input pubkeys → Generate keys → Derive hybrid key → Encrypt → Send
 
 
+Client-Server Demo:
+Server (server.c):
+
+✅ TCP server listening on port 8080
+✅ Handles multiple concurrent client connections
+✅ Fresh ECDH keys per connection (perfect forward secrecy)
+✅ Static Kyber keys for efficiency
+✅ Automated key exchange protocol
+✅ Message decryption and response
+Client (client.c):
+
+✅ TCP client connecting to server
+✅ Automated key exchange (no manual input)
+✅ Encrypts and sends messages
+✅ Receives server responses
+✅ Supports custom server IP addresses
+
+Performance Features
+- Concurrent connections: Server handles 100+ simultaneous clients
+- Fresh keys: ECDH keys regenerated per connection
+- Efficient protocol: Binary data transfer (no hex conversion)
+- Error handling: Robust connection and protocol error handling
+- Load testing ready: Built for high-throughput testing
+
+Security
+- Hybrid cryptography: ECDH + Kyber for post-quantum security
+- Perfect forward secrecy: Fresh ECDH keys per connection
+- Authenticated encryption: XSalsa20-Poly1305 for messages
+- Secure key derivation: BLAKE2b hash of combined secrets
+
+
 
 
 
