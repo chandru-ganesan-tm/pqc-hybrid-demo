@@ -1,28 +1,10 @@
-How to use
-Compile both programs linking libsodium and Kyber sources.
 
-Run the receiver first. It will print its ECDH and Kyber public keys in hex.
-
-Copy those hex keys and input them into the sender program when prompted.
-
-The sender will output its ECDH public key, Kyber ciphertext, nonce, and encrypted message in hex.
-
-Copy those outputs and input them into the receiver program when prompted.
-
-The receiver will decrypt and print the original message.
 
 Summary
 The sender uses the receiver’s public keys to derive a hybrid shared secret.
 The sender encrypts a message with that hybrid key.
 The receiver uses its private keys and the sender’s public key + ciphertext to derive the same hybrid key.
 The receiver decrypts the message using the hybrid key.
-
-Improvements
-Split sender and receiver: Separate the client and server code into two programs communicating over a network or files.
-Add encryption: Use the hybrid key to encrypt/decrypt messages (e.g., with crypto_secretbox_easy from libsodium).
-Error handling: Improve error messages and handle edge cases.
-Security: Use constant-time comparisons and securely erase sensitive data after use.
-Integration: Combine with TLS or other protocols for real-world use.
 
 
 # Classic key Exchange
