@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     clock_gettime(CLOCK_MONOTONIC, &end);
-    ecdhe_keypair_time = get_time_diff(start, end);
+    ecdhe_keypair_time = get_time_diff(start, end) * 1000;
 
     // Compute ECDH shared secret
     unsigned char cli_rx[crypto_kx_SESSIONKEYBYTES];
@@ -132,7 +132,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     clock_gettime(CLOCK_MONOTONIC, &end);
-    ecdhe_derive_time = get_time_diff(start, end);
+    ecdhe_derive_time = get_time_diff(start, end) * 1000;
 
     unsigned char ecdh_shared[crypto_kx_SESSIONKEYBYTES];
     memcpy(ecdh_shared, cli_tx, crypto_kx_SESSIONKEYBYTES);
@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     clock_gettime(CLOCK_MONOTONIC, &end);
-    kyber_encap_time = get_time_diff(start, end);
+    kyber_encap_time = get_time_diff(start, end) * 1000;
 
     // Derive hybrid key
     unsigned char hybrid_key[HYBRID_KEY_BYTES];
@@ -157,7 +157,7 @@ int main(int argc, char *argv[]) {
     clock_gettime(CLOCK_MONOTONIC, &start);
     crypto_generichash(hybrid_key, HYBRID_KEY_BYTES, input, sizeof(input), NULL, 0);
     clock_gettime(CLOCK_MONOTONIC, &end);
-    key_derivation_time = get_time_diff(start, end);
+    key_derivation_time = get_time_diff(start, end) * 1000;
 
     // Encrypt message
     unsigned char nonce[crypto_secretbox_NONCEBYTES];
@@ -168,7 +168,7 @@ int main(int argc, char *argv[]) {
     clock_gettime(CLOCK_MONOTONIC, &start);
     crypto_secretbox_easy(ciphertext, (const unsigned char *)MESSAGE, message_len, nonce, hybrid_key);
     clock_gettime(CLOCK_MONOTONIC, &end);
-    encryption_time = get_time_diff(start, end);
+    encryption_time = get_time_diff(start, end) * 1000;
 
     // Send client's data to server
     // Send sender's ECDH public key
@@ -218,15 +218,15 @@ int main(int argc, char *argv[]) {
     }
 
     // Print timing results
-    printf("Timing Results:\n");
-    printf("ECDHE keypair generation: %.6f seconds\n", ecdhe_keypair_time);
-    printf("ECDHE key derivation: %.6f seconds\n", ecdhe_derive_time);
-    printf("Kyber encapsulation: %.6f seconds\n", kyber_encap_time);
-    printf("Hybrid key derivation: %.6f seconds\n", key_derivation_time);
-    printf("Encryption: %.6f seconds\n", encryption_time);
+    LOG("Timing Results:\n");
+    LOG("ECDHE keypair generation: %.6f ms\n", ecdhe_keypair_time);
+    LOG("ECDHE key derivation: %.6f ms\n", ecdhe_derive_time);
+    LOG("Kyber encapsulation: %.6f ms\n", kyber_encap_time);
+    LOG("Hybrid key derivation: %.6f ms\n", key_derivation_time);
+    LOG("Encryption: %.6f ms\n", encryption_time);
 
     close(sock);
-    printf("Connection closed\n");
+    LOG("Connection closed\n");
 
     return 0;
 }

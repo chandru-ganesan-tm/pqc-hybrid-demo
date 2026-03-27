@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
             continue;
         }
         clock_gettime(CLOCK_MONOTONIC, &end);
-        ecdhe_keypair_time = get_time_diff(start, end);
+        ecdhe_keypair_time = get_time_diff(start, end) * 1000;
 
         // Use static receiver Kyber keypair
         unsigned char recv_kyber_pk[CRYPTO_PUBLICKEYBYTES];
@@ -199,7 +199,7 @@ int main(int argc, char *argv[]) {
             continue;
         }
         clock_gettime(CLOCK_MONOTONIC, &end);
-        ecdhe_derive_time = get_time_diff(start, end);
+        ecdhe_derive_time = get_time_diff(start, end) * 1000;
 
         unsigned char ecdh_shared[crypto_kx_SESSIONKEYBYTES];
         memcpy(ecdh_shared, srv_rx, crypto_kx_SESSIONKEYBYTES);
@@ -213,7 +213,7 @@ int main(int argc, char *argv[]) {
             continue;
         }
         clock_gettime(CLOCK_MONOTONIC, &end);
-        kyber_decap_time = get_time_diff(start, end);
+        kyber_decap_time = get_time_diff(start, end) * 1000;
 
         // Derive hybrid key
         unsigned char hybrid_key[HYBRID_KEY_BYTES];
@@ -223,7 +223,7 @@ int main(int argc, char *argv[]) {
         clock_gettime(CLOCK_MONOTONIC, &start);
         crypto_generichash(hybrid_key, HYBRID_KEY_BYTES, input, sizeof(input), NULL, 0);
         clock_gettime(CLOCK_MONOTONIC, &end);
-        key_derivation_time = get_time_diff(start, end);
+        key_derivation_time = get_time_diff(start, end) * 1000;
 
         // Decrypt message
         unsigned char decrypted[1024];
@@ -236,7 +236,7 @@ int main(int argc, char *argv[]) {
             continue;
         }
         clock_gettime(CLOCK_MONOTONIC, &end);
-        decryption_time = get_time_diff(start, end);
+        decryption_time = get_time_diff(start, end) * 1000;
 
         LOG("Decrypted message: %s\n", decrypted);
 
@@ -245,12 +245,12 @@ int main(int argc, char *argv[]) {
         send_all(new_socket, success_msg, strlen(success_msg));
 
         // Print timing results for this connection
-        printf("Timing Results (connection from %s:%d):\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-        printf("ECDHE keypair generation: %.6f seconds\n", ecdhe_keypair_time);
-        printf("ECDHE key derivation: %.6f seconds\n", ecdhe_derive_time);
-        printf("Kyber decapsulation: %.6f seconds\n", kyber_decap_time);
-        printf("Hybrid key derivation: %.6f seconds\n", key_derivation_time);
-        printf("Decryption: %.6f seconds\n", decryption_time);
+        LOG("Timing Results (connection from %s:%d):\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+        LOG("ECDHE keypair generation: %.6f ms\n", ecdhe_keypair_time);
+        LOG("ECDHE key derivation: %.6f ms\n", ecdhe_derive_time);
+        LOG("Kyber decapsulation: %.6f ms\n", kyber_decap_time);
+        LOG("Hybrid key derivation: %.6f ms\n", key_derivation_time);
+        LOG("Decryption: %.6f ms\n", decryption_time);
 
         close(new_socket);
         LOG("Connection closed\n");

@@ -1,0 +1,600 @@
+Connected to server 127.0.0.1:8080
+Received server public keys
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Sent encrypted message to server
+Connected to server 127.0.0.1:8080
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.115179 ms
+ECDHE key derivation: 0.152037 ms
+Kyber encapsulation: 0.336887 ms
+Hybrid key derivation: 0.004794 ms
+Encryption: 0.006835 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Connected to server 127.0.0.1:8080
+Sent encrypted message to server
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.115102 ms
+ECDHE key derivation: 0.126865 ms
+Kyber encapsulation: 0.218411 ms
+Hybrid key derivation: 0.002575 ms
+Encryption: 0.006136 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Sent encrypted message to server
+Connected to server 127.0.0.1:8080
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.118641 ms
+ECDHE key derivation: 0.121330 ms
+Kyber encapsulation: 0.292402 ms
+Hybrid key derivation: 0.003034 ms
+Connected to server 127.0.0.1:8080
+Encryption: 0.006010 ms
+Received server public keys
+Connection closed
+Server response: SUCCESS
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Sent encrypted message to server
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.094902 ms
+ECDHE key derivation: 0.109670 ms
+Kyber encapsulation: 0.205916 ms
+Hybrid key derivation: 0.000847 ms
+Encryption: 0.004782 ms
+Connection closed
+Server response: SUCCESS
+Connected to server 127.0.0.1:8080
+Received server public keys
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.115315 ms
+ECDHE key derivation: 0.228619 ms
+Kyber encapsulation: 0.100942 ms
+Hybrid key derivation: 0.000389 ms
+Encryption: 0.003884 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Connected to server 127.0.0.1:8080
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.095792 ms
+ECDHE key derivation: 0.105399 ms
+Kyber encapsulation: 0.191819 ms
+Hybrid key derivation: 0.001259 ms
+Encryption: 0.005085 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Connected to server 127.0.0.1:8080
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.106008 ms
+ECDHE key derivation: 0.123234 ms
+Kyber encapsulation: 0.201055 ms
+Hybrid key derivation: 0.001468 ms
+Encryption: 0.005098 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Sent encrypted message to server
+Connected to server 127.0.0.1:8080
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.096659 ms
+ECDHE key derivation: 0.099197 ms
+Kyber encapsulation: 0.180799 ms
+Hybrid key derivation: 0.001302 ms
+Encryption: 0.011444 ms
+Connection closed
+Received server public keys
+Server response: SUCCESS
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Sent encrypted message to server
+Connected to server 127.0.0.1:8080
+Received server public keys
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.064814 ms
+ECDHE key derivation: 0.067105 ms
+Kyber encapsulation: 0.110205 ms
+Hybrid key derivation: 0.000601 ms
+Encryption: 0.002654 ms
+Connection closed
+Server response: SUCCESS
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.078627 ms
+ECDHE key derivation: 0.109395 ms
+Kyber encapsulation: 0.145566 ms
+Hybrid key derivation: 0.000750 ms
+Encryption: 0.002942 ms
+Connection closed
+Server response: SUCCESS
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Received server public keys
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.047289 ms
+ECDHE key derivation: 0.054923 ms
+Kyber encapsulation: 0.104523 ms
+Hybrid key derivation: 0.000869 ms
+Encryption: 0.006641 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Connected to server 127.0.0.1:8080
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.068608 ms
+ECDHE key derivation: 0.125755 ms
+Kyber encapsulation: 0.161171 ms
+Hybrid key derivation: 0.001518 ms
+Encryption: 0.002190 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Connected to server 127.0.0.1:8080
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.050654 ms
+ECDHE key derivation: 0.063710 ms
+Kyber encapsulation: 0.122911 ms
+Hybrid key derivation: 0.001985 ms
+Encryption: 0.003951 ms
+Received server public keys
+Connection closed
+Connected to server 127.0.0.1:8080
+Server response: SUCCESS
+Sent encrypted message to server
+Server response: SUCCESS
+Received server public keys
+Timing Results:
+ECDHE keypair generation: 0.032135 ms
+ECDHE key derivation: 0.031714 ms
+Kyber encapsulation: 0.056003 ms
+Hybrid key derivation: 0.000263 ms
+Encryption: 0.001683 ms
+Connection closed
+Server response: SUCCESS
+Connected to server 127.0.0.1:8080
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+Received server public keys
+ECDHE keypair generation: 0.052078 ms
+ECDHE key derivation: 0.054697 ms
+Kyber encapsulation: 0.092955 ms
+Hybrid key derivation: 0.001245 ms
+Encryption: 0.002214 ms
+Connection closed
+Server response: SUCCESS
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.034533 ms
+ECDHE key derivation: 0.038137 ms
+Kyber encapsulation: 0.054591 ms
+Hybrid key derivation: 0.000215 ms
+Encryption: 0.002116 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.047857 ms
+ECDHE key derivation: 0.055699 ms
+Kyber encapsulation: 0.091588 ms
+Hybrid key derivation: 0.000872 ms
+Encryption: 0.001849 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.032358 ms
+ECDHE key derivation: 0.034386 ms
+Kyber encapsulation: 0.056243 ms
+Hybrid key derivation: 0.000211 ms
+Encryption: 0.003253 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.030922 ms
+ECDHE key derivation: 0.034365 ms
+Kyber encapsulation: 0.054627 ms
+Hybrid key derivation: 0.000220 ms
+Encryption: 0.001731 ms
+Connection closed
+Received server public keys
+Server response: SUCCESS
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.031690 ms
+ECDHE key derivation: 0.034971 ms
+Kyber encapsulation: 0.055367 ms
+Hybrid key derivation: 0.000482 ms
+Encryption: 0.001306 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.048500 ms
+ECDHE key derivation: 0.058878 ms
+Kyber encapsulation: 0.088629 ms
+Hybrid key derivation: 0.000500 ms
+Encryption: 0.003167 ms
+Connection closed
+Received server public keys
+Server response: SUCCESS
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.037764 ms
+ECDHE key derivation: 0.042301 ms
+Kyber encapsulation: 0.064691 ms
+Hybrid key derivation: 0.000268 ms
+Encryption: 0.002805 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.049477 ms
+ECDHE key derivation: 0.056871 ms
+Kyber encapsulation: 0.088302 ms
+Hybrid key derivation: 0.000661 ms
+Encryption: 0.005982 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.048808 ms
+ECDHE key derivation: 0.052995 ms
+Kyber encapsulation: 0.092596 ms
+Hybrid key derivation: 0.000847 ms
+Encryption: 0.002510 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.031933 ms
+ECDHE key derivation: 0.036236 ms
+Kyber encapsulation: 0.056188 ms
+Hybrid key derivation: 0.000211 ms
+Encryption: 0.001645 ms
+Connection closed
+Received server public keys
+Server response: SUCCESS
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.057767 ms
+ECDHE key derivation: 0.034105 ms
+Kyber encapsulation: 0.053965 ms
+Hybrid key derivation: 0.000226 ms
+Encryption: 0.002997 ms
+Connection closed
+Server response: SUCCESS
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Received server public keys
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Sent encrypted message to server
+Connected to server 127.0.0.1:8080
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.152487 ms
+ECDHE key derivation: 0.148576 ms
+Kyber encapsulation: 0.180486 ms
+Hybrid key derivation: 0.000683 ms
+Encryption: 0.006161 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Connected to server 127.0.0.1:8080
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.114691 ms
+ECDHE key derivation: 0.156065 ms
+Kyber encapsulation: 0.213529 ms
+Hybrid key derivation: 0.001058 ms
+Encryption: 0.005345 ms
+Received server public keys
+Connection closed
+Server response: SUCCESS
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.112869 ms
+ECDHE key derivation: 0.117845 ms
+Kyber encapsulation: 0.267366 ms
+Hybrid key derivation: 0.002908 ms
+Encryption: 0.011068 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Sent encrypted message to server
+Received server public keys
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.115408 ms
+ECDHE key derivation: 0.160641 ms
+Kyber encapsulation: 0.165736 ms
+Hybrid key derivation: 0.000587 ms
+Encryption: 0.007508 ms
+Sent encrypted message to server
+Connection closed
+Server response: SUCCESS
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.097099 ms
+ECDHE key derivation: 0.095345 ms
+Kyber encapsulation: 0.163354 ms
+Hybrid key derivation: 0.000672 ms
+Encryption: 0.002991 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.113615 ms
+ECDHE key derivation: 0.123896 ms
+Kyber encapsulation: 0.222293 ms
+Hybrid key derivation: 0.002714 ms
+Encryption: 0.003095 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.122848 ms
+ECDHE key derivation: 0.123492 ms
+Kyber encapsulation: 0.196021 ms
+Hybrid key derivation: 0.001030 ms
+Encryption: 0.003750 ms
+Received server public keys
+Connection closed
+Server response: SUCCESS
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.099363 ms
+ECDHE key derivation: 0.099415 ms
+Kyber encapsulation: 0.154685 ms
+Hybrid key derivation: 0.000583 ms
+Encryption: 0.003138 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.346220 ms
+ECDHE key derivation: 0.435183 ms
+Kyber encapsulation: 0.268717 ms
+Hybrid key derivation: 0.001682 ms
+Encryption: 0.003336 ms
+Received server public keys
+Connection closed
+Server response: SUCCESS
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.072329 ms
+ECDHE key derivation: 0.082516 ms
+Kyber encapsulation: 0.187858 ms
+Hybrid key derivation: 0.001152 ms
+Encryption: 0.002769 ms
+Received server public keys
+Connection closed
+Server response: SUCCESS
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.061582 ms
+ECDHE key derivation: 0.072058 ms
+Kyber encapsulation: 0.109892 ms
+Hybrid key derivation: 0.000418 ms
+Encryption: 0.002508 ms
+Received server public keys
+Connection closed
+Server response: SUCCESS
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.061742 ms
+ECDHE key derivation: 0.062035 ms
+Kyber encapsulation: 0.108230 ms
+Hybrid key derivation: 0.000393 ms
+Encryption: 0.002322 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.123699 ms
+ECDHE key derivation: 0.129787 ms
+Kyber encapsulation: 0.213478 ms
+Hybrid key derivation: 0.001787 ms
+Encryption: 0.004116 ms
+Connection closed
+Server response: SUCCESS
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Connected to server 127.0.0.1:8080
+Received server public keys
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.119708 ms
+ECDHE key derivation: 0.132578 ms
+Kyber encapsulation: 0.217385 ms
+Hybrid key derivation: 0.001069 ms
+Encryption: 0.006787 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.113014 ms
+ECDHE key derivation: 0.125758 ms
+Kyber encapsulation: 0.216816 ms
+Hybrid key derivation: 0.001683 ms
+Encryption: 0.003362 ms
+Received server public keys
+Connection closed
+Server response: SUCCESS
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.098402 ms
+ECDHE key derivation: 0.114515 ms
+Kyber encapsulation: 0.174348 ms
+Hybrid key derivation: 0.000811 ms
+Encryption: 0.003390 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+Received server public keys
+ECDHE keypair generation: 0.156622 ms
+ECDHE key derivation: 0.113609 ms
+Kyber encapsulation: 0.159660 ms
+Hybrid key derivation: 0.000567 ms
+Encryption: 0.002987 ms
+Connection closed
+Server response: SUCCESS
+Sent encrypted message to server
+Server response: SUCCESS
+Received server public keys
+Timing Results:
+ECDHE keypair generation: 0.091439 ms
+ECDHE key derivation: 0.100527 ms
+Kyber encapsulation: 0.209212 ms
+Hybrid key derivation: 0.001045 ms
+Encryption: 0.003433 ms
+Connection closed
+Server response: SUCCESS
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.090156 ms
+ECDHE key derivation: 0.107992 ms
+Kyber encapsulation: 0.162603 ms
+Hybrid key derivation: 0.000621 ms
+Encryption: 0.002995 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.148218 ms
+ECDHE key derivation: 0.110037 ms
+Kyber encapsulation: 0.159771 ms
+Hybrid key derivation: 0.000600 ms
+Encryption: 0.002901 ms
+Received server public keys
+Connection closed
+Server response: SUCCESS
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.121730 ms
+ECDHE key derivation: 0.118358 ms
+Kyber encapsulation: 0.214153 ms
+Hybrid key derivation: 0.001040 ms
+Encryption: 0.004265 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.095143 ms
+ECDHE key derivation: 0.097966 ms
+Kyber encapsulation: 0.166788 ms
+Hybrid key derivation: 0.000708 ms
+Encryption: 0.003427 ms
+Connection closed
+Server response: SUCCESS
+Received server public keys
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.091751 ms
+ECDHE key derivation: 0.101143 ms
+Kyber encapsulation: 0.164257 ms
+Hybrid key derivation: 0.000647 ms
+Encryption: 0.003300 ms
+Received server public keys
+Connection closed
+Server response: SUCCESS
+Sent encrypted message to server
+Server response: SUCCESS
+Timing Results:
+ECDHE keypair generation: 0.096139 ms
+ECDHE key derivation: 0.097431 ms
+Kyber encapsulation: 0.327187 ms
+Hybrid key derivation: 0.001480 ms
+Encryption: 0.003347 ms
+Connection closed
+Server response: SUCCESS

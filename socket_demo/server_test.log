@@ -1,0 +1,502 @@
+Server listening on port 8080 (ready for load testing)
+Waiting for client connection...
+Client connected from 127.0.0.1:52838
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52838):
+ECDHE keypair generation: 0.130365 ms
+ECDHE key derivation: 0.136118 ms
+Kyber decapsulation: 0.266383 ms
+Hybrid key derivation: 0.002882 ms
+Decryption: 0.007046 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:52848
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52848):
+ECDHE keypair generation: 0.106826 ms
+ECDHE key derivation: 0.193253 ms
+Kyber decapsulation: 0.245152 ms
+Hybrid key derivation: 0.000914 ms
+Decryption: 0.005954 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:52860
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52860):
+ECDHE keypair generation: 0.106356 ms
+ECDHE key derivation: 0.085682 ms
+Kyber decapsulation: 0.208314 ms
+Hybrid key derivation: 0.000660 ms
+Decryption: 0.004443 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:52868
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52868):
+ECDHE keypair generation: 0.074085 ms
+ECDHE key derivation: 0.116330 ms
+Kyber decapsulation: 0.243288 ms
+Hybrid key derivation: 0.001000 ms
+Decryption: 0.005195 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:52870
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52870):
+ECDHE keypair generation: 0.100439 ms
+ECDHE key derivation: 0.107816 ms
+Kyber decapsulation: 0.312578 ms
+Hybrid key derivation: 0.002042 ms
+Decryption: 0.004055 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:52882
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52882):
+ECDHE keypair generation: 0.092563 ms
+ECDHE key derivation: 0.115956 ms
+Kyber decapsulation: 0.276919 ms
+Hybrid key derivation: 0.002497 ms
+Decryption: 0.005553 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:52892
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52892):
+ECDHE keypair generation: 0.098732 ms
+ECDHE key derivation: 0.101341 ms
+Kyber decapsulation: 0.214503 ms
+Hybrid key derivation: 0.000845 ms
+Decryption: 0.004497 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:52896
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52896):
+ECDHE keypair generation: 0.040098 ms
+ECDHE key derivation: 0.042065 ms
+Kyber decapsulation: 0.076528 ms
+Hybrid key derivation: 0.000229 ms
+Decryption: 0.002363 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:52904
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52904):
+ECDHE keypair generation: 0.032817 ms
+ECDHE key derivation: 0.055153 ms
+Kyber decapsulation: 0.116929 ms
+Hybrid key derivation: 0.000429 ms
+Decryption: 0.002343 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:52922
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52922):
+ECDHE keypair generation: 0.070861 ms
+ECDHE key derivation: 0.076127 ms
+Kyber decapsulation: 0.174198 ms
+Hybrid key derivation: 0.001835 ms
+Decryption: 0.002812 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:52924
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52924):
+ECDHE keypair generation: 0.070053 ms
+ECDHE key derivation: 0.030897 ms
+Kyber decapsulation: 0.060804 ms
+Hybrid key derivation: 0.000202 ms
+Decryption: 0.001560 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:52926
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52926):
+ECDHE keypair generation: 0.027287 ms
+ECDHE key derivation: 0.058081 ms
+Kyber decapsulation: 0.149294 ms
+Hybrid key derivation: 0.001156 ms
+Decryption: 0.002562 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:52928
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52928):
+ECDHE keypair generation: 0.044626 ms
+ECDHE key derivation: 0.033814 ms
+Kyber decapsulation: 0.066339 ms
+Hybrid key derivation: 0.000202 ms
+Decryption: 0.002858 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:52938
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52938):
+ECDHE keypair generation: 0.028644 ms
+ECDHE key derivation: 0.047799 ms
+Kyber decapsulation: 0.100256 ms
+Hybrid key derivation: 0.000363 ms
+Decryption: 0.002152 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:52934
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52934):
+ECDHE keypair generation: 0.043500 ms
+ECDHE key derivation: 0.052443 ms
+Kyber decapsulation: 0.103840 ms
+Hybrid key derivation: 0.000396 ms
+Decryption: 0.002445 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:52952
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52952):
+ECDHE keypair generation: 0.045893 ms
+ECDHE key derivation: 0.030776 ms
+Kyber decapsulation: 0.061806 ms
+Hybrid key derivation: 0.000196 ms
+Decryption: 0.001376 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:52972
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52972):
+ECDHE keypair generation: 0.027315 ms
+ECDHE key derivation: 0.046750 ms
+Kyber decapsulation: 0.100442 ms
+Hybrid key derivation: 0.000357 ms
+Decryption: 0.001768 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:52986
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52986):
+ECDHE keypair generation: 0.044105 ms
+ECDHE key derivation: 0.078958 ms
+Kyber decapsulation: 0.060797 ms
+Hybrid key derivation: 0.000194 ms
+Decryption: 0.001250 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53026
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53026):
+ECDHE keypair generation: 0.210781 ms
+ECDHE key derivation: 0.064846 ms
+Kyber decapsulation: 0.060614 ms
+Hybrid key derivation: 0.000195 ms
+Decryption: 0.001109 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53036
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53036):
+ECDHE keypair generation: 0.027218 ms
+ECDHE key derivation: 0.060394 ms
+Kyber decapsulation: 0.123303 ms
+Hybrid key derivation: 0.000996 ms
+Decryption: 0.002428 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53062
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53062):
+ECDHE keypair generation: 0.043557 ms
+ECDHE key derivation: 0.048178 ms
+Kyber decapsulation: 0.100255 ms
+Hybrid key derivation: 0.000382 ms
+Decryption: 0.002238 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53116
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53116):
+ECDHE keypair generation: 0.088857 ms
+ECDHE key derivation: 0.047706 ms
+Kyber decapsulation: 0.101495 ms
+Hybrid key derivation: 0.000371 ms
+Decryption: 0.002128 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53136
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53136):
+ECDHE keypair generation: 0.044244 ms
+ECDHE key derivation: 0.047548 ms
+Kyber decapsulation: 0.098391 ms
+Hybrid key derivation: 0.000344 ms
+Decryption: 0.001958 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53208
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53208):
+ECDHE keypair generation: 0.043412 ms
+ECDHE key derivation: 0.047403 ms
+Kyber decapsulation: 0.097243 ms
+Hybrid key derivation: 0.000384 ms
+Decryption: 0.001745 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53242
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53242):
+ECDHE keypair generation: 0.043224 ms
+ECDHE key derivation: 0.050991 ms
+Kyber decapsulation: 0.061067 ms
+Hybrid key derivation: 0.000198 ms
+Decryption: 0.001102 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53268
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53268):
+ECDHE keypair generation: 0.027022 ms
+ECDHE key derivation: 0.047000 ms
+Kyber decapsulation: 0.076730 ms
+Hybrid key derivation: 0.000579 ms
+Decryption: 0.000897 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53230
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53230):
+ECDHE keypair generation: 0.134265 ms
+ECDHE key derivation: 0.100911 ms
+Kyber decapsulation: 0.203174 ms
+Hybrid key derivation: 0.000724 ms
+Decryption: 0.003828 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53184
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53184):
+ECDHE keypair generation: 0.091389 ms
+ECDHE key derivation: 0.100178 ms
+Kyber decapsulation: 0.204256 ms
+Hybrid key derivation: 0.000709 ms
+Decryption: 0.003377 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53132
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53132):
+ECDHE keypair generation: 0.091303 ms
+ECDHE key derivation: 0.112780 ms
+Kyber decapsulation: 0.233017 ms
+Hybrid key derivation: 0.001827 ms
+Decryption: 0.002792 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:52988
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52988):
+ECDHE keypair generation: 0.084666 ms
+ECDHE key derivation: 0.113280 ms
+Kyber decapsulation: 0.236666 ms
+Hybrid key derivation: 0.002042 ms
+Decryption: 0.002990 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53144
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53144):
+ECDHE keypair generation: 0.084668 ms
+ECDHE key derivation: 0.091437 ms
+Kyber decapsulation: 0.179111 ms
+Hybrid key derivation: 0.000659 ms
+Decryption: 0.002696 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53180
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53180):
+ECDHE keypair generation: 0.084291 ms
+ECDHE key derivation: 0.092818 ms
+Kyber decapsulation: 0.181262 ms
+Hybrid key derivation: 0.000640 ms
+Decryption: 0.002584 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53066
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53066):
+ECDHE keypair generation: 0.084523 ms
+ECDHE key derivation: 0.066384 ms
+Kyber decapsulation: 0.132492 ms
+Hybrid key derivation: 0.000434 ms
+Decryption: 0.002802 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53014
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53014):
+ECDHE keypair generation: 0.060390 ms
+ECDHE key derivation: 0.113536 ms
+Kyber decapsulation: 0.242799 ms
+Hybrid key derivation: 0.000825 ms
+Decryption: 0.003877 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:52956
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:52956):
+ECDHE keypair generation: 0.413619 ms
+ECDHE key derivation: 0.075091 ms
+Kyber decapsulation: 0.095226 ms
+Hybrid key derivation: 0.000314 ms
+Decryption: 0.001985 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53106
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53106):
+ECDHE keypair generation: 0.043239 ms
+ECDHE key derivation: 0.068827 ms
+Kyber decapsulation: 0.148283 ms
+Hybrid key derivation: 0.000561 ms
+Decryption: 0.002487 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53032
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53032):
+ECDHE keypair generation: 0.063614 ms
+ECDHE key derivation: 0.066179 ms
+Kyber decapsulation: 0.137351 ms
+Hybrid key derivation: 0.000462 ms
+Decryption: 0.002235 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53074
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53074):
+ECDHE keypair generation: 0.056573 ms
+ECDHE key derivation: 0.056676 ms
+Kyber decapsulation: 0.126242 ms
+Hybrid key derivation: 0.001275 ms
+Decryption: 0.001575 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53250
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53250):
+ECDHE keypair generation: 0.034885 ms
+ECDHE key derivation: 0.113519 ms
+Kyber decapsulation: 0.310727 ms
+Hybrid key derivation: 0.001359 ms
+Decryption: 0.001675 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53000
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53000):
+ECDHE keypair generation: 0.106615 ms
+ECDHE key derivation: 0.118048 ms
+Kyber decapsulation: 0.249306 ms
+Hybrid key derivation: 0.001483 ms
+Decryption: 0.005214 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53196
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53196):
+ECDHE keypair generation: 0.103675 ms
+ECDHE key derivation: 0.269656 ms
+Kyber decapsulation: 0.270644 ms
+Hybrid key derivation: 0.003125 ms
+Decryption: 0.005182 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53054
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53054):
+ECDHE keypair generation: 0.092495 ms
+ECDHE key derivation: 0.115761 ms
+Kyber decapsulation: 0.265999 ms
+Hybrid key derivation: 0.003377 ms
+Decryption: 0.005807 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53094
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53094):
+ECDHE keypair generation: 0.105553 ms
+ECDHE key derivation: 0.094052 ms
+Kyber decapsulation: 0.189572 ms
+Hybrid key derivation: 0.000756 ms
+Decryption: 0.003372 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53160
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53160):
+ECDHE keypair generation: 0.085545 ms
+ECDHE key derivation: 0.142582 ms
+Kyber decapsulation: 0.187522 ms
+Hybrid key derivation: 0.000663 ms
+Decryption: 0.002751 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53164
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53164):
+ECDHE keypair generation: 0.084223 ms
+ECDHE key derivation: 0.091386 ms
+Kyber decapsulation: 0.183887 ms
+Hybrid key derivation: 0.000702 ms
+Decryption: 0.002759 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53080
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53080):
+ECDHE keypair generation: 0.084615 ms
+ECDHE key derivation: 0.091873 ms
+Kyber decapsulation: 0.184854 ms
+Hybrid key derivation: 0.000816 ms
+Decryption: 0.002957 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53224
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53224):
+ECDHE keypair generation: 0.084424 ms
+ECDHE key derivation: 0.093837 ms
+Kyber decapsulation: 0.189237 ms
+Hybrid key derivation: 0.000626 ms
+Decryption: 0.003803 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53140
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53140):
+ECDHE keypair generation: 0.085703 ms
+ECDHE key derivation: 0.183713 ms
+Kyber decapsulation: 0.184258 ms
+Hybrid key derivation: 0.000637 ms
+Decryption: 0.003552 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53020
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53020):
+ECDHE keypair generation: 0.085464 ms
+ECDHE key derivation: 0.093499 ms
+Kyber decapsulation: 0.189015 ms
+Hybrid key derivation: 0.000667 ms
+Decryption: 0.003773 ms
+Connection closed
+Waiting for client connection...
+Client connected from 127.0.0.1:53262
+Decrypted message: Hello, this is a secret message from client!
+Timing Results (connection from 127.0.0.1:53262):
+ECDHE keypair generation: 0.085111 ms
+ECDHE key derivation: 0.081685 ms
+Kyber decapsulation: 0.158575 ms
+Hybrid key derivation: 0.000540 ms
+Decryption: 0.002701 ms
+Connection closed
+Waiting for client connection...
