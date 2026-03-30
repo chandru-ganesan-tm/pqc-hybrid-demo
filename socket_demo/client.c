@@ -53,15 +53,15 @@ int main(int argc, char *argv[]) {
     struct timespec start, end;
     double ecdhe_keypair_time = 0, ecdhe_derive_time = 0, kyber_encap_time = 0, key_derivation_time = 0, encryption_time = 0;
 
-    // Debug switch
-    if (argc > 1 && (strcmp(argv[1], "--debug") == 0 || strcmp(argv[1], "-d") == 0)) {
-        debug = 1;
-    }
-
-    // Allow custom server IP via command line argument
     const char *server_ip = SERVER_IP;
-    if (argc > 1 && !(strcmp(argv[1], "--debug") == 0 || strcmp(argv[1], "-d") == 0)) {
-        server_ip = argv[1];
+
+    // Accept both debug flag and optional server IP in any order.
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--debug") == 0 || strcmp(argv[i], "-d") == 0) {
+            debug = 1;
+        } else {
+            server_ip = argv[i];
+        }
     }
 
     if (sodium_init() < 0) {

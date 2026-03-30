@@ -91,8 +91,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Listen
-    if (listen(server_fd, 10) < 0) {  // Allow more concurrent connections for load testing
+    // Listen with a larger accept queue for bursty load tests.
+    if (listen(server_fd, SOMAXCONN) < 0) {
         perror("listen failed");
         return 1;
     }
@@ -169,7 +169,7 @@ int main(int argc, char *argv[]) {
 
         // Receive ciphertext length first
         uint32_t ciphertext_len_net;
-        if (recv(new_socket, &ciphertext_len_net, sizeof(uint32_t), 0) != sizeof(uint32_t)) {
+        if (recv_all(new_socket, &ciphertext_len_net, sizeof(uint32_t)) != sizeof(uint32_t)) {
             perror("Failed to receive ciphertext length");
             close(new_socket);
             continue;
@@ -183,7 +183,7 @@ int main(int argc, char *argv[]) {
         }
 
         // Receive ciphertext
-        if (recv(new_socket, ciphertext, ciphertext_len, 0) != (ssize_t)ciphertext_len) {
+        if (recv_all(new_socket, ciphertext, ciphertext_len) != (ssize_t)ciphertext_len) {
             perror("Failed to receive ciphertext");
             close(new_socket);
             continue;

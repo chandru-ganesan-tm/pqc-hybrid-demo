@@ -5,8 +5,11 @@
 SERVER_HOST=${1:-"127.0.0.1"}
 SERVER_PORT=${2:-8080}
 NUM_CLIENTS=${3:-10}
+BATCH_SIZE=${4:-40}
+CLIENT_DEBUG=${5:-0}
 
 echo "Starting load test with $NUM_CLIENTS clients against $SERVER_HOST:$SERVER_PORT"
+echo "Batch size: $BATCH_SIZE"
 
 # Assume server is started manually (do not auto-start in this load test)
 echo "Assuming server is already running at $SERVER_HOST:$SERVER_PORT"
@@ -16,15 +19,48 @@ echo "Assuming server is already running at $SERVER_HOST:$SERVER_PORT"
 
 
 # Start clients in parallel
-echo "Launching $NUM_CLIENTS clients..."
-for i in $(seq 1 $NUM_CLIENTS); do
-    ./client --debug $SERVER_HOST >> ./client_test.log 2>&1 &
-    echo -n "."
-done
-echo ""
+echo "Launching $NUM_CLIENTS clients in batches..."
 
-echo "Waiting for all clients to complete..."
-wait
+completed=0
+failed=0
+batch_launched=0
+pids=()
+
+for i in $(seq 1 "$NUM_CLIENTS"); do
+    if [ "$CLIENT_DEBUG" -eq 1 ]; then
+        ./client --debug "$SERVER_HOST" >> ./client_test.log 2>&1 &
+    else
+        ./client "$SERVER_HOST" >> ./client_test.log 2>&1 &
+    fi
+
+    pids+=("$!")
+    batch_launched=$((batch_launched + 1))
+    echo -n "."
+
+    if [ "$batch_launched" -ge "$BATCH_SIZE" ]; then
+        for pid in "${pids[@]}"; do
+            if wait "$pid"; then
+                completed=$((completed + 1))
+            else
+                failed=$((failed + 1))
+            fi
+        done
+        pids=()
+        batch_launched=0
+    fi
+done
+
+# Wait for any remaining clients in the final partial batch.
+for pid in "${pids[@]}"; do
+    if wait "$pid"; then
+        completed=$((completed + 1))
+    else
+        failed=$((failed + 1))
+    fi
+done
+
+echo ""
+echo "Completed: $completed / $NUM_CLIENTS, Failed: $failed"
 
 # Kill server
 # echo "Stopping server..."

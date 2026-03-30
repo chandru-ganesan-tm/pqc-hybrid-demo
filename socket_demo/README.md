@@ -43,8 +43,9 @@ make run-client
 # Terminal 2: Run load test with 10 concurrent clients
 make load-test
 
-# Or run custom number of clients:
-for i in {1..50}; do ./client & done; wait
+# Or run custom load test parameters:
+# ./load_test.sh <server_ip> <server_port> <num_clients> <batch_size> <client_debug>
+./load_test.sh 127.0.0.1 8080 120 40 0
 ```
 
 ### Custom Server IP
