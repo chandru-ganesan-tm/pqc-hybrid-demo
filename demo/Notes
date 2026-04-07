@@ -6,45 +6,7 @@ The sender encrypts a message with that hybrid key.
 The receiver uses its private keys and the sender’s public key + ciphertext to derive the same hybrid key.
 The receiver decrypts the message using the hybrid key.
 
-
-# Classic key Exchange
-
-Preconditions:
-Server certificate with kyber public key (server_ecdh_pk) is separately shared with the client
-
-ServerHello: (server -> client)                                                     
-- (server_ecdh_pk, server_ecdh_sk) = ecdhe_keypair()                                // Generate EC-keypair
-- send(server_ecdh_pk)                                                              // Send server_kyber_pk to client
-
-ClientHello: (client -> server)                                                     
-- (client_ecdh_pk, client_ecdh_sk) = ecdhe_keypair()                                // Generate EC-keypair and shared_secret 
-- (kyber_ciphertext, kyber_shared_secret) = kyber_encap(server_kyber_pk)            // Generate and encapsulate shared_secret using server_kyber_pk
-- send(kyber_ciphertext, client_ecdh_pk)                                            // Send encapsulated shared secret (ciphertext) to server
-
-# Hybrid key Derivation
-
-client:
-- ecdh_shared_secret = X25519(server_ecdh_pk, client_ecdh_sk)                       // Key agreement
-- hybrid_key = hash(ecdh_shared_secret, kyber_shared_secret)                        // Client Key Derivation
-
-server:
-- ecdh_shared_secret = X25519(server_ecdh_pk, client_ecdh)                          
-- kyber_shared_secret = kyber_decapsulate(ciphertext, server_kyber_sk)              // Server KEM Decapsulation
-- hybrid_key = hash(ecdh_shared_secret, kyber_shared_secret)                        // Server Key derivation
-
-# Hybrid message encryption and decryption
-
-client:
-encrypted_message = encrypt(hybrid_key, plaintext)
-send(encrypted_message)
-
-server:
-decrypted_message = decrypt(hybrid_key, encrypted_message)
-
-Architecture Overview
-Current state: hybrid_demo.c does both client and server operations in a single program.
-
-Proposed split:
+Architecture Overview:
 
 Server (Receiver):
 
@@ -69,6 +31,49 @@ Client (Sender)
 
 Server:  Generate keys → Output pubkeys → Read ciphertext/message → Decrypt
 Client:  Input pubkeys → Generate keys → Derive hybrid key → Encrypt → Send
+
+Run:
+./receiver --debug [from terminal 1]
+./sender --debug 127.0.0.1 [from terminal 2]
+Both receiver and sender prints keys to be manually exchanged via the cmdline
+
+# Classic key Exchange
+
+Preconditions:
+Server certificate with kyber public key (server_ecdh_pk) is separately shared with the client
+
+ServerHello: (server -> client)                                                     
+- (server_ecdh_pk, server_ecdh_sk) = ecdhe_keypair()                                // Generate EC-keypair
+- send(server_ecdh_pk)                                                              // Send server_kyber_pk to client
+
+ClientHello: (client -> server)                                                     
+- (client_ecdh_pk, client_ecdh_sk) = ecdhe_keypair()                                // Generate EC-keypair and shared_secret 
+- (kyber_ciphertext, kyber_shared_secret) = kyber_encap(server_kyber_pk)            // Generate and encapsulate shared_secret using server_kyber_pk
+- send(kyber_ciphertext, client_ecdh_pk)                                            // Send encapsulated shared secret (ciphertext) to server
+
+# Hybrid key Derivation
+
+client:
+- ecdh_shared_secret = X25519(server_ecdh_pk, client_ecdh_sk)                       // Key agreement
+- hybrid_key = hash(ecdh_shared_secret, kyber_shared_secret)                        // Client Key Derivation
+
+server:
+- ecdh_shared_secret = X25519(server_ecdh_sk, client_ecdh_pk)                          
+- kyber_shared_secret = kyber_decapsulate(ciphertext, server_kyber_sk)              // Server KEM Decapsulation
+- hybrid_key = hash(ecdh_shared_secret, kyber_shared_secret)                        // Server Key derivation
+
+# Hybrid message encryption and decryption
+
+client:
+encrypted_message = encrypt(hybrid_key, plaintext)
+send(encrypted_message)
+
+server:
+decrypted_message = decrypt(hybrid_key, encrypted_message)
+
+
+
+
 
 
 Client-Server Demo:
@@ -101,9 +106,54 @@ Security
 - Authenticated encryption: XSalsa20-Poly1305 for messages
 - Secure key derivation: BLAKE2b hash of combined secrets
 
+The 2-step key derivation in this code:
+
+Step 1 — Derive two separate shared secrets (independently):
+
+ECDH (classical): crypto_kx_client_session_keys(...) — performs X25519 Diffie-Hellman between sender and receiver key pairs → produces ecdh_shared
+Kyber KEM (post-quantum): crypto_kem_enc(kyber_ct, kyber_ss, recv_kyber_pk) — encapsulates a random secret using the receiver's Kyber public key → produces kyber_ss
+
+Step 2 — Combine into a single hybrid key:
+
+crypto_generichash(hybrid_key, ..., input, ...) — hashes the concatenation ecdh_shared || kyber_ss using BLAKE2b to produce a single 256-bit hybrid_key
+The idea is that an attacker must break both X25519 (vulnerable to quantum computers) and Kyber (designed to resist quantum attacks) to recover the final key.
+
+Input Keying Material = ecdh_shared || kyber_ss — both are shared secrets, not public keys
+The Kyber public key (recv_kyber_pk) is only used as input to crypto_kem_enc() to produce kyber_ss — it never enters the KDF itself
+The output hybrid_key is the combined key (what HKDF would call OKM)
+
+Encapsulation in a KEM like Kyber is a form of encryption, but specifically for securely transmitting a shared secret key, not general data.
+
+Encapsulation encrypts the shared secret key using the recipient’s public key, producing the ciphertext.
+This ciphertext hides the key so only the recipient with the private key can recover it.
+It is different from encrypting the actual message or data payload; encapsulation secures the key used later to encrypt/decrypt that data
 
 
+hybrid_key = crypto_generichash(ecdh_shared || kyber_ss)
+Input keying material: 64 bytes
+Final derived symmetric key: 32 bytes
+
+In your flow, “AEAD” is the data-protection step after the hybrid key is derived.
+
+What it does here:
+
+Encrypts the plaintext with the 32-byte hybrid key.
+Adds an authentication tag (MAC) so tampering is detected.
+On receiver side, decryption succeeds only if ciphertext, nonce, and key are all valid together.
+So practically, it gives:
+
+Confidentiality: attacker cannot read the message without the hybrid key.
+Integrity/authenticity: attacker cannot modify ciphertext without being detected.
+
+crypto_secretbox_easy / crypto_secretbox_open_easy (XSalsa20-Poly1305).
+This is authenticated encryption, but it does not support separate “associated data” input.
+So there is no extra authenticated header/context unless you include it inside the encrypted payload yourself.
 
 
+MAC tag 
+A MAC tag (Message Authentication Code) is a short value computed from:
+the message data, and
+a shared secret key
+A MAC tag proves that the sender had the shared secret key used to generate the tag. If only legitimate parties know that key, then the receiver can trust the message came from someone authorized to use it.
 
 

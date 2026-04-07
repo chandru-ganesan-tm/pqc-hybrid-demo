@@ -29,12 +29,14 @@ static void print_keysizes()
         printf("Kyber variant: Kyber1024\n");
 
     printf("CRYPTO_PUBLICKEYBYTES (Kyber pubkey) = %d\n", CRYPTO_PUBLICKEYBYTES);
-    printf("CRYPTO_SECRETKEYBYTES (kyber secret) = %d\n", CRYPTO_SECRETKEYBYTES);
-    printf("CRYPTO_CIPHERTEXTBYTES (kyber ct) = %d\n", CRYPTO_CIPHERTEXTBYTES);
-    printf("CRYPTO_BYTES (kyber ss) = %d\n", CRYPTO_BYTES);
+    printf("crypto_kx_PUBLICKEYBYTES (ECDH pubkey) = %d\n", crypto_kx_PUBLICKEYBYTES);
+    printf("CRYPTO_SECRETKEYBYTES (kyber privkey) = %d\n", CRYPTO_SECRETKEYBYTES);
+    printf("crypto_kx_SECRETKEYBYTES (ecdhe privkey) = %d\n", crypto_kx_SECRETKEYBYTES);
+    printf("CRYPTO_BYTES (kyber shared secret) = %d\n", CRYPTO_BYTES);
+    printf("crypto_kx_SESSIONKEYBYTES (ecdhe shared secret) = %d\n", crypto_kx_SESSIONKEYBYTES);
+    printf("CRYPTO_CIPHERTEXTBYTES (kyber ciphertext) = %d\n", CRYPTO_CIPHERTEXTBYTES);
     printf("HYBRID_KEY_BYTES (final symmetric key) = %d\n", HYBRID_KEY_BYTES);
     printf("NONCEBYTES = %d\n", crypto_secretbox_NONCEBYTES);
-    printf("SESSIONKEYBYTES = %d\n\n", crypto_kx_SESSIONKEYBYTES);
 }
 
 int main(void) {

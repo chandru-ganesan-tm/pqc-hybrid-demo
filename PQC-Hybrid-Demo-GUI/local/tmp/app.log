@@ -1,0 +1,43 @@
+22:49:33.284 [APP] ============================================================
+22:49:33.285 [APP] PQC DEMO starting
+22:49:33.285 [APP] SERVER_BIN  = /home/mohammad_abou-kamar/PQC-DEMO-Chandru/server
+22:49:33.285 [APP] LOCAL_CLIENT= /home/mohammad_abou-kamar/PQC-DEMO-Chandru/local/client
+22:49:33.285 [APP] PQC_PORT    = 9090
+22:49:33.285 [APP] GUI_PORT    = 8081
+22:49:33.285 [APP] LOG_DIR     = /home/mohammad_abou-kamar/PQC-DEMO-Chandru/local/tmp
+22:49:33.285 [APP] ============================================================
+22:49:33.540 [APP] _start_live: creating new LiveProto (old=False)
+22:49:33.547 [APP] _start_live: server start requested
+22:49:33.572 [APP] SRV_EVT: gui_connected  (phase=IDLE)
+22:49:33.573 [APP] SRV_EVT: listening  (phase=IDLE)
+22:49:33.576 [APP] SRV_EVT: ecdh_keygen  (phase=IDLE)
+22:49:33.580 [APP] SRV_EVT: phase  (phase=IDLE)
+22:49:33.580 [APP] PHASE event: keys_ready  (current exchange_phase=IDLE)
+22:49:34.391 [APP] SRV_EVT: kyber_pk_loaded  (phase=KEYS_READY)
+22:49:44.471 [APP] DROP vehicle: token=server_keys phase=KEYS_READY
+22:49:44.473 [APP] _advance_to_client: phase=KEYS_READY
+22:49:44.508 [APP] CLI_EVT: connected  (phase=CLIENT_RUNNING)
+22:49:44.510 [APP] SRV_EVT: phase  (phase=CLIENT_RUNNING)
+22:49:44.511 [APP] PHASE event: bundle_received  (current exchange_phase=CLIENT_RUNNING)
+22:49:44.534 [APP] SRV_EVT: client_connected  (phase=BUNDLE_READY)
+22:49:44.539 [APP] SRV_EVT: keys_sent  (phase=BUNDLE_READY)
+22:49:44.545 [APP] CLI_EVT: server_keys_received  (phase=BUNDLE_READY)
+22:49:45.389 [APP] SRV_EVT: client_data_received  (phase=BUNDLE_READY)
+22:49:46.190 [APP] CLI_EVT: ecdh_keygen  (phase=BUNDLE_READY)
+22:49:46.990 [APP] CLI_EVT: ecdh_derive  (phase=BUNDLE_READY)
+22:49:47.790 [APP] CLI_EVT: kyber_encap  (phase=BUNDLE_READY)
+22:49:48.591 [APP] CLI_EVT: hybrid_key  (phase=BUNDLE_READY)
+22:49:49.391 [APP] CLI_EVT: encrypt  (phase=BUNDLE_READY)
+22:49:50.191 [APP] CLI_EVT: data_sent  (phase=BUNDLE_READY)
+22:49:59.864 [APP] DROP server: token=client_bundle phase=BUNDLE_READY bundle_complete=True
+22:49:59.865 [APP] _advance_to_process: phase=BUNDLE_READY srv_bundle=True
+22:49:59.865 [APP] _commit_process: phase=BUNDLE_READY srv_bundle=True proc_req=True srv_started=False
+22:49:59.902 [APP] SRV_EVT: ecdh_derive  (phase=PROCESSING)
+22:49:59.907 [APP] exchange_done signal: phase=PROCESSING
+22:49:59.936 [APP] SRV_EVT: kyber_decap  (phase=PROCESSING)
+22:50:00.783 [APP] SRV_EVT: hybrid_key  (phase=PROCESSING)
+22:50:01.591 [APP] SRV_EVT: decrypt  (phase=PROCESSING)
+22:50:02.391 [APP] SRV_EVT: complete  (phase=PROCESSING)
+22:50:03.191 [APP] CLI_EVT: complete  (phase=COMPLETE)
+23:00:01.622 [APP] App exiting (ret=0), cleaning up...
+23:00:01.625 [APP] Goodbye
