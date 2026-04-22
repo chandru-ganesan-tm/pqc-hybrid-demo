@@ -157,3 +157,44 @@ a shared secret key
 A MAC tag proves that the sender had the shared secret key used to generate the tag. If only legitimate parties know that key, then the receiver can trust the message came from someone authorized to use it.
 
 
+
+
+Connection between client and server
+======================================================================================================================
+Board Client (shared/bin/client) — a real running process. It executes the PQC crypto operations (ECDH key exchange, Kyber encapsulation, hybrid key derivation, message encryption) and then makes a TCP connection to 127.0.0.1:19090 to send the encrypted bundle.
+
+Tunnel Endpoint (127.0.0.1:19090) — not a process at all. It is a TCP port on the board's loopback interface that the SSH daemon automatically opens as part of the reverse tunnel established by the host GUI:
+
+
+ssh -R 19090:127.0.0.1:9090 root@192.168.0.5 ...
+This -R flag tells SSH: "on the remote board, listen on port 19090; any connection that arrives there, forward it back through the SSH tunnel to 127.0.0.1:9090 on the host".
+
+So the data path on Channel C is:
+
+
+Board Client process  → connects to 127.0.0.1:19090 (SSH-created loopback socket)    → SSH tunnel (transparent)      → arrives at ./server :9090 on the host
+The tunnel endpoint box in the diagram represents that SSH-managed loopback socket — it's a networking artifact, not a binary or process. The diagram separates them visually to make the indirection of the reverse tunnel explicit; without it, it would look like the board client is connecting directly to the host server, which isn't what happens.
+
+Claude Sonnet 4.6 • 0.9x
+Restore Checkpoint
+the actual communication between client and server uses sockets over tcp/ip?
+
+Analyzed communication mechanism between board client and server
+Yes, exactly. The client opens a standard TCP socket and connects to an IP + port. Here's the precise path depending on the mode:
+
+Board mode:
+
+
+client  →  connect(127.0.0.1:19090)  →  [SSH reverse tunnel]  →  server.accept() on :9090
+The client calls a plain TCP connect(). It just happens to land on a loopback port that SSH is listening on and transparently forwarding to the host.
+
+Local mode:
+
+
+client  →  connect(<HOST_IP>:9090)  →  server.accept() on :9090
+Direct TCP socket, no tunnel involved.
+
+So in both cases it is a regular TCP socket connection — the client has no awareness of the tunnel. The SSH reverse tunnel is invisible to both the client and the server; it just moves the TCP bytes between the two machines. The client binary literally does something equivalent to:
+
+connect(fd, &addr_127_0_0_1_19090, sizeof(addr));send(fd, crypto_bundle, bundle_len, 0);
+The tunnel endpoint box in the diagram only exists to make the indirection visible — without it the diagram would look like the board client magically skips across machines.

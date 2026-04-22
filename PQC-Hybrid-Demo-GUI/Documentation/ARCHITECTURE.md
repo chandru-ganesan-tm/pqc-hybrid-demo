@@ -61,6 +61,36 @@ There are three distinct channels:
   - Board client connects to `127.0.0.1:19090`
   - Tunnel forwards that traffic back to host server `127.0.0.1:<PQC_PORT>`.
 
+## 2.1 Simple Flow (Test Environment)
+
+Use this simplified view in presentations when you need a clean board-mode test path.
+
+```mermaid
+flowchart LR
+  subgraph Host[Host Machine]
+    GUI[src/gui/app.py\nGUI]
+    Server[./server\nPQC Server\n:9090]
+    GUI <-->|Channel A\nsocketpair --gui-fd\nPROCESS/NEXT + JSON events| Server
+  end
+
+  subgraph Board[S4SK Board]
+    Client[shared/bin/client\nBoard Client]
+    Tunnel[127.0.0.1:19090\nSSH reverse tunnel endpoint]
+    Client -->|connect| Tunnel
+  end
+
+  GUI <-->|Channel B\nSSH stdout/stderr\nclient JSON events| Client
+  Tunnel -->|Channel C\nTCP crypto payload| Server
+```
+
+Test sequence (simple):
+
+1. GUI starts server with `--gui-fd`.
+2. GUI launches board client over SSH with reverse tunnel `-R 19090:127.0.0.1:9090`.
+3. Client sends crypto payload to `127.0.0.1:19090` on board.
+4. SSH tunnel forwards payload to host server on `127.0.0.1:9090`.
+5. GUI receives progress events from server (Channel A) and client logs/events (Channel B).
+
 ## 3. Why Reverse Tunnel Is Used
 
 Direct board -> host TCP to WSL can be inconsistent depending on host networking and firewall behavior.
