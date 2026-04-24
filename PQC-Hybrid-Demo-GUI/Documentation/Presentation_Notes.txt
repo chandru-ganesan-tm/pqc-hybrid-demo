@@ -1,0 +1,44 @@
+Keep the script as speaker notes for voice-over, but keep each slide note to:
+
+One opening line that states the point of the slide.
+Two to four short sentences for explanation.
+One closing takeaway line.
+
+
+Slide 1
+“Forward secrecy means if long-term keys are exposed later, previously captured traffic stays protected.
+The concern now is harvest-now-decrypt-later, where attackers store encrypted traffic and wait for stronger compute.
+Our approach is hybrid two-step derivation: classical ECDHE plus post-quantum Kyber, combined into one session key.
+So this PoC demonstrates practical migration: stronger resilience now, while remaining compatible with existing systems.”
+
+Slide 2
+“This is the end-to-end exchange between vehicle and server.
+First, Kyber encapsulation and decapsulation establish the post-quantum shared secret.
+Second, X25519 ECDHE establishes the classical shared secret.
+Both values are combined through KDF to produce one hybrid key.
+That hybrid key drives encryption on the client and decryption on the server, so both sides converge securely on the same session key.”
+
+Slide 3
+“This view shows the workflow across apps and broker.
+Server publishes key material, client generates ECDHE values and Kyber ciphertext, then publishes the bundle.
+Both sides independently derive the same hybrid key from two secrets.
+After that, payload encryption and decryption proceed with the derived key.
+The key point is separation of generation, transport, and derivation, which makes the flow testable and implementation-friendly.”
+
+Slide 4
+“Why hybrid: it gives migration safety and crypto agility.
+If one side needs tuning during transition, the other still contributes security continuity.
+It is a practical bridge from classical-only to PQC-ready deployments.
+Tradeoffs are clear: more computation and larger messages.
+So the design choice is balanced parameters: enough security margin with acceptable latency and bandwidth overhead.”
+
+Slide 5
+“This demo uses three channels with clear responsibilities.
+Channel A handles GUI orchestration and control events.
+Channel B carries process output and runtime visibility over SSH.
+Channel C carries the crypto protocol traffic over TCP.
+So the GUI coordinates, while client and server do the cryptographic work.
+That separation improves observability, debugging, and operational realism.”
+
+
+
