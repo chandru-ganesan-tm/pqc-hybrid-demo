@@ -440,8 +440,7 @@ int main(int argc, char *argv[]) {
         memcpy(kdf_in + crypto_kx_SESSIONKEYBYTES, kyber_ss, CRYPTO_BYTES);
 
         clock_gettime(CLOCK_MONOTONIC, &ts0);
-        crypto_generichash(hybrid_key, HYBRID_KEY_BYTES,
-                           kdf_in, sizeof(kdf_in), NULL, 0);
+        crypto_hash_sha256(hybrid_key, kdf_in, sizeof(kdf_in));
         clock_gettime(CLOCK_MONOTONIC, &ts1);
         t = get_time_diff(ts0, ts1) * 1000;
 

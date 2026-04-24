@@ -320,8 +320,7 @@ int main(int argc, char *argv[]) {
     memcpy(kdf_input + crypto_kx_SESSIONKEYBYTES, kyber_ss, CRYPTO_BYTES);
 
     clock_gettime(CLOCK_MONOTONIC, &ts_start);
-    crypto_generichash(hybrid_key, HYBRID_KEY_BYTES,
-                       kdf_input, sizeof(kdf_input), NULL, 0);
+    crypto_hash_sha256(hybrid_key, kdf_input, sizeof(kdf_input));
     clock_gettime(CLOCK_MONOTONIC, &ts_end);
     key_derivation_time = get_time_diff(ts_start, ts_end) * 1000;
 

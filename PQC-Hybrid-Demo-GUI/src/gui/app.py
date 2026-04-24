@@ -54,6 +54,16 @@ CLR_ECDH = "#42a5f5"; CLR_KYBER = "#ab47bc"; CLR_HYBRID = "#ffa726"; CLR_CIPHER 
 def _short(h, n=32): return h if len(h) <= n else h[:n] + "…"
 
 
+def _format_duration_us(time_ms) -> str:
+    return f"{time_ms * 1000:.0f} us"
+
+
+def _step_with_duration(step_label: str, time_ms=None) -> str:
+    if time_ms in (None, ""):
+        return step_label
+    return f"{step_label} | {_format_duration_us(time_ms)}"
+
+
 @dataclass
 class KeyEntry:
     label: str
@@ -76,6 +86,16 @@ class Proto:
     hybrid_c: str = ""; hybrid_s: str = ""
     nonce: str = ""; enc_msg: str = ""
     decrypted: str = ""
+    s_ecdh_pk_time_ms: float | None = None
+    c_ecdh_pk_time_ms: float | None = None
+    ecdh_ss_c_time_ms: float | None = None
+    ecdh_ss_s_time_ms: float | None = None
+    kyber_ss_c_time_ms: float | None = None
+    kyber_ss_s_time_ms: float | None = None
+    hybrid_c_time_ms: float | None = None
+    hybrid_s_time_ms: float | None = None
+    encrypt_time_ms: float | None = None
+    decrypt_time_ms: float | None = None
 
     def reset(self):
         self.__init__()
@@ -2576,6 +2596,7 @@ class MainWindow(QtWidgets.QMainWindow):
             pk = evt.get("pk", "")
             t = evt.get("time_ms", 0)
             p.s_ecdh_pk = pk
+            p.s_ecdh_pk_time_ms = t
             self.panelB.log_step(f"ECDH Keygen ({t:.3f} ms)", CLR_ECDH)
             self.panelB.log_val("s_ecdh_pk", pk, CLR_ECDH)
             self._refresh()
@@ -2607,8 +2628,9 @@ class MainWindow(QtWidgets.QMainWindow):
             ss = evt.get("shared", "")
             t = evt.get("time_ms", 0)
             p.ecdh_ss_s = ss
+            p.ecdh_ss_s_time_ms = t
             self.panelB.set_step(1, 4, "KDF Step-1 \u2014 ECDH Shared Secret", CLR_ECDH)
-            self.panelB.log_step(f"KDF Step-1: ECDH Shared Secret ({t:.3f} ms)", CLR_ECDH)
+            self.panelB.log_step(f"KDF Step-1: ECDH Shared Secret ({_format_duration_us(t)})", CLR_ECDH)
             self.panelB.log_val("ecdh_shared", ss, CLR_ECDH)
             self._refresh()
 
@@ -2617,8 +2639,9 @@ class MainWindow(QtWidgets.QMainWindow):
             ss = evt.get("shared", "")
             t = evt.get("time_ms", 0)
             p.kyber_ss_s = ss
+            p.kyber_ss_s_time_ms = t
             self.panelB.set_step(2, 4, "KDF Step-2 \u2014 Kyber Decapsulation", CLR_KYBER)
-            self.panelB.log_step(f"KDF Step-2: Kyber Decapsulation ({t:.3f} ms)", CLR_KYBER)
+            self.panelB.log_step(f"KDF Step-2: Kyber Decapsulation ({_format_duration_us(t)})", CLR_KYBER)
             self.panelB.log_val("kyber_ss", ss, CLR_KYBER)
             self._refresh()
 
@@ -2626,8 +2649,9 @@ class MainWindow(QtWidgets.QMainWindow):
             key = evt.get("key", "")
             t = evt.get("time_ms", 0)
             p.hybrid_s = key
-            self.panelB.set_step(3, 4, "Hybrid KDF \u2014 BLAKE2b(ecdh || kyber)", CLR_HYBRID)
-            self.panelB.log_step(f"Hybrid KDF: BLAKE2b(ecdh || kyber) ({t:.3f} ms)", CLR_HYBRID)
+            p.hybrid_s_time_ms = t
+            self.panelB.set_step(3, 4, "Hybrid KDF \u2014 SHA-256(ecdh || kyber)", CLR_HYBRID)
+            self.panelB.log_step(f"Hybrid KDF: SHA-256(ecdh || kyber) ({_format_duration_us(t)})", CLR_HYBRID)
             self.panelB.log_val("hybrid_key", key, CLR_HYBRID)
             self._refresh()
 
@@ -2636,8 +2660,9 @@ class MainWindow(QtWidgets.QMainWindow):
             pt = evt.get("plaintext", "")
             t = evt.get("time_ms", 0)
             p.decrypted = pt
+            p.decrypt_time_ms = t
             self.panelB.set_step(4, 4, "Decrypt \u2014 Message Recovered", "#4caf50")
-            self.panelB.log_step(f"Decrypt ({t:.3f} ms)", "#4caf50")
+            self.panelB.log_step(f"Decrypt ({_format_duration_us(t)})", "#4caf50")
             self.panelB.log_val("message", pt, "#4caf50")
             self.panelB.show_decrypted(pt)
             self._refresh()
@@ -2717,8 +2742,9 @@ class MainWindow(QtWidgets.QMainWindow):
             pk = evt.get("pk", "")
             t = evt.get("time_ms", 0)
             p.c_ecdh_pk = pk
+            p.c_ecdh_pk_time_ms = t
             self.panelA.set_step(1, 5, "ECDH Keygen", CLR_ECDH)
-            self.panelA.log_step(f"Client ECDH Keygen ({t:.3f} ms)", CLR_ECDH)
+            self.panelA.log_step(f"Client ECDH Keygen ({_format_duration_us(t)})", CLR_ECDH)
             self.panelA.log_val("c_ecdh_pk", pk, CLR_ECDH)
             self.panelA.set_status("PROCESSING", CLR_ECDH)
             self._refresh()
@@ -2727,8 +2753,9 @@ class MainWindow(QtWidgets.QMainWindow):
             ss = evt.get("shared", "")
             t = evt.get("time_ms", 0)
             p.ecdh_ss_c = ss
+            p.ecdh_ss_c_time_ms = t
             self.panelA.set_step(2, 5, "KDF Step-1 \u2014 ECDH Shared Secret", CLR_ECDH)
-            self.panelA.log_step(f"KDF Step-1: ECDH Shared Secret ({t:.3f} ms)", CLR_ECDH)
+            self.panelA.log_step(f"KDF Step-1: ECDH Shared Secret ({_format_duration_us(t)})", CLR_ECDH)
             self.panelA.log_val("ecdh_shared", ss, CLR_ECDH)
             self._refresh()
 
@@ -2738,8 +2765,9 @@ class MainWindow(QtWidgets.QMainWindow):
             t = evt.get("time_ms", 0)
             p.kyber_ct = ct
             p.kyber_ss_c = ss
+            p.kyber_ss_c_time_ms = t
             self.panelA.set_step(3, 5, "KDF Step-2 \u2014 Kyber Encapsulation", CLR_KYBER)
-            self.panelA.log_step(f"KDF Step-2: Kyber Encapsulation ({t:.3f} ms)", CLR_KYBER)
+            self.panelA.log_step(f"KDF Step-2: Kyber Encapsulation ({_format_duration_us(t)})", CLR_KYBER)
             self.panelA.log_val("kyber_ct", ct, CLR_KYBER)
             self.panelA.log_val("kyber_ss", ss, CLR_KYBER)
             self._refresh()
@@ -2748,8 +2776,9 @@ class MainWindow(QtWidgets.QMainWindow):
             key = evt.get("key", "")
             t = evt.get("time_ms", 0)
             p.hybrid_c = key
-            self.panelA.set_step(4, 5, "Hybrid KDF \u2014 BLAKE2b(ecdh || kyber)", CLR_HYBRID)
-            self.panelA.log_step(f"Hybrid KDF ({t:.3f} ms)", CLR_HYBRID)
+            p.hybrid_c_time_ms = t
+            self.panelA.set_step(4, 5, "Hybrid KDF \u2014 SHA-256(ecdh || kyber)", CLR_HYBRID)
+            self.panelA.log_step(f"Hybrid KDF ({_format_duration_us(t)})", CLR_HYBRID)
             self.panelA.log_val("hybrid_key", key, CLR_HYBRID)
             self._refresh()
 
@@ -2759,8 +2788,9 @@ class MainWindow(QtWidgets.QMainWindow):
             t = evt.get("time_ms", 0)
             p.enc_msg = ct
             p.nonce = nonce
+            p.encrypt_time_ms = t
             self.panelA.set_step(5, 5, "Encrypt \u2014 Message Sealed", CLR_CIPHER)
-            self.panelA.log_step(f"Encrypt ({t:.3f} ms)", CLR_CIPHER)
+            self.panelA.log_step(f"Encrypt ({_format_duration_us(t)})", CLR_CIPHER)
             self.panelA.log_val("ciphertext", ct, CLR_CIPHER)
             self._refresh()
 
@@ -3068,14 +3098,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # ── Server keys ───────────────────────────────────────
         s_keys = []
-        if p.s_ecdh_pk: s_keys.append(KeyEntry("Server ECDH Public Key (X25519)", p.s_ecdh_pk, CLR_ECDH, "Keygen",
+        if p.s_ecdh_pk: s_keys.append(KeyEntry("Server ECDH Public Key (X25519)", p.s_ecdh_pk, CLR_ECDH, _step_with_duration("Keygen", p.s_ecdh_pk_time_ms),
                                                  bundle_key="s_ecdh_pk" if phase == "KEYS_READY" else "", size_bytes=32, flow_slot="ecdh_1"))
         if p.s_kyber_pk: s_keys.append(KeyEntry("Server Kyber-768 Public Key", p.s_kyber_pk, CLR_KYBER, "Keygen",
                                                   bundle_key="s_kyber_pk" if phase == "KEYS_READY" else "", size_bytes=1184, flow_slot="kyber_1"))
-        if p.ecdh_ss_s: s_keys.append(KeyEntry("ECDH Shared Secret", p.ecdh_ss_s, CLR_ECDH, "Step 1/4", flow_slot="ecdh_2"))
-        if p.kyber_ss_s: s_keys.append(KeyEntry("Kyber Shared Secret", p.kyber_ss_s, CLR_KYBER, "Step 2/4", flow_slot="kyber_2"))
-        if p.hybrid_s: s_keys.append(KeyEntry("Hybrid Key", p.hybrid_s, CLR_HYBRID, "Step 3/4", flow_slot="hybrid"))
-        if p.decrypted: s_keys.append(KeyEntry("Decrypted Message", p.decrypted, "#4caf50", "Step 4/4", flow_slot="decrypt"))
+        if p.ecdh_ss_s: s_keys.append(KeyEntry("ECDH Shared Secret", p.ecdh_ss_s, CLR_ECDH, _step_with_duration("Step 1/4", p.ecdh_ss_s_time_ms), flow_slot="ecdh_2"))
+        if p.kyber_ss_s: s_keys.append(KeyEntry("Kyber Shared Secret", p.kyber_ss_s, CLR_KYBER, _step_with_duration("Step 2/4", p.kyber_ss_s_time_ms), flow_slot="kyber_2"))
+        if p.hybrid_s: s_keys.append(KeyEntry("Hybrid Key", p.hybrid_s, CLR_HYBRID, _step_with_duration("Step 3/4", p.hybrid_s_time_ms), flow_slot="hybrid"))
+        if p.decrypted: s_keys.append(KeyEntry("Decrypted Message", p.decrypted, "#4caf50", _step_with_duration("Step 4/4", p.decrypt_time_ms), flow_slot="decrypt"))
         self.panelB.set_keys(s_keys)
 
         # Server bundle collector — show during KEYS_READY phase
@@ -3093,18 +3123,18 @@ class MainWindow(QtWidgets.QMainWindow):
         # ── Vehicle keys ──────────────────────────────────────
         can_bundle = bundle_complete and phase not in ("PROCESSING", "COMPLETE")
         v_keys = []
-        if p.c_ecdh_pk: v_keys.append(KeyEntry("Vehicle ECDH Public Key (X25519)", p.c_ecdh_pk, CLR_ECDH, "Step 1/5",
+        if p.c_ecdh_pk: v_keys.append(KeyEntry("Vehicle ECDH Public Key (X25519)", p.c_ecdh_pk, CLR_ECDH, _step_with_duration("Step 1/5", p.c_ecdh_pk_time_ms),
                                                  bundle_key="c_ecdh_pk" if can_bundle else "", size_bytes=32, flow_slot="ecdh_1"))
-        if p.ecdh_ss_c: v_keys.append(KeyEntry("ECDH Shared Secret", p.ecdh_ss_c, CLR_ECDH, "Step 2/5", flow_slot="ecdh_2"))
-        if p.kyber_ct: v_keys.append(KeyEntry("Vehicle Kyber Ciphertext", p.kyber_ct, CLR_KYBER, "Step 3/5",
+        if p.ecdh_ss_c: v_keys.append(KeyEntry("ECDH Shared Secret", p.ecdh_ss_c, CLR_ECDH, _step_with_duration("Step 2/5", p.ecdh_ss_c_time_ms), flow_slot="ecdh_2"))
+        if p.kyber_ct: v_keys.append(KeyEntry("Vehicle Kyber Ciphertext", p.kyber_ct, CLR_KYBER, _step_with_duration("Step 3/5", p.kyber_ss_c_time_ms),
                                                bundle_key="kyber_ct" if can_bundle else "", size_bytes=1088, flow_slot="kyber_1"))
-        if p.kyber_ss_c: v_keys.append(KeyEntry("Kyber Shared Secret", p.kyber_ss_c, CLR_KYBER, "Step 3/5", flow_slot="kyber_2"))
-        if p.hybrid_c: v_keys.append(KeyEntry("Hybrid Key", p.hybrid_c, CLR_HYBRID, "Step 4/5", flow_slot="hybrid"))
+        if p.kyber_ss_c: v_keys.append(KeyEntry("Kyber Shared Secret", p.kyber_ss_c, CLR_KYBER, _step_with_duration("Step 3/5", p.kyber_ss_c_time_ms), flow_slot="kyber_2"))
+        if p.hybrid_c: v_keys.append(KeyEntry("Hybrid Key", p.hybrid_c, CLR_HYBRID, _step_with_duration("Step 4/5", p.hybrid_c_time_ms), flow_slot="hybrid"))
         if p.enc_msg:
             enc_bytes = len(p.enc_msg) // 2
-            v_keys.append(KeyEntry("Encrypted Message", p.enc_msg, CLR_CIPHER, "Step 5/5",
+            v_keys.append(KeyEntry("Encrypted Message", p.enc_msg, CLR_CIPHER, _step_with_duration("Step 5/5", p.encrypt_time_ms),
                                     bundle_key="enc_msg" if can_bundle else "", size_bytes=enc_bytes, flow_slot="encrypt_1"))
-        if p.nonce: v_keys.append(KeyEntry("Nonce", p.nonce, CLR_CIPHER, "Step 5/5",
+        if p.nonce: v_keys.append(KeyEntry("Nonce", p.nonce, CLR_CIPHER, _step_with_duration("Step 5/5", p.encrypt_time_ms),
                                             bundle_key="nonce" if can_bundle else "", size_bytes=24, flow_slot="encrypt_2"))
         self.panelA.set_keys(v_keys)
 

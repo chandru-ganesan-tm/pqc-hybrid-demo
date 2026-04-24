@@ -2579,8 +2579,8 @@ class MainWindow(QtWidgets.QMainWindow):
             key = evt.get("key", "")
             t = evt.get("time_ms", 0)
             p.hybrid_s = key
-            self.panelB.set_step(3, 4, "Hybrid KDF \u2014 BLAKE2b(ecdh || kyber)", CLR_HYBRID)
-            self.panelB.log_step(f"Hybrid KDF: BLAKE2b(ecdh || kyber) ({t:.3f} ms)", CLR_HYBRID)
+            self.panelB.set_step(3, 4, "Hybrid KDF \u2014 SHA-256(ecdh || kyber)", CLR_HYBRID)
+            self.panelB.log_step(f"Hybrid KDF: SHA-256(ecdh || kyber) ({t:.3f} ms)", CLR_HYBRID)
             self.panelB.log_val("hybrid_key", key, CLR_HYBRID)
             self._refresh()
 
@@ -2701,7 +2701,7 @@ class MainWindow(QtWidgets.QMainWindow):
             key = evt.get("key", "")
             t = evt.get("time_ms", 0)
             p.hybrid_c = key
-            self.panelA.set_step(4, 5, "Hybrid KDF \u2014 BLAKE2b(ecdh || kyber)", CLR_HYBRID)
+            self.panelA.set_step(4, 5, "Hybrid KDF \u2014 SHA-256(ecdh || kyber)", CLR_HYBRID)
             self.panelA.log_step(f"Hybrid KDF ({t:.3f} ms)", CLR_HYBRID)
             self.panelA.log_val("hybrid_key", key, CLR_HYBRID)
             self._refresh()
