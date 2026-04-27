@@ -50,6 +50,9 @@ _log_app = _make_logger("APP",     "app.log")       # phase transitions, drag/dr
 MIME_TOKEN = "application/x-pqc-token"
 MIME_INGREDIENT = "application/x-pqc-ingredient"  # individual key dragged into bundle
 CLR_ECDH = "#42a5f5"; CLR_KYBER = "#ab47bc"; CLR_HYBRID = "#ffa726"; CLR_CIPHER = "#ef5350"
+MODE_ECDH = "ecdh"
+MODE_PQC = "pqc"
+MODE_HYBRID = "hybrid"
 
 def _short(h, n=32): return h if len(h) <= n else h[:n] + "…"
 
@@ -62,6 +65,13 @@ def _step_with_duration(step_label: str, time_ms=None) -> str:
     if time_ms in (None, ""):
         return step_label
     return f"{step_label} | {_format_duration_us(time_ms)}"
+
+
+def _sum_times_ms(values: list[float | None]) -> float | None:
+    vals = [v for v in values if v not in (None, "")]
+    if not vals:
+        return None
+    return float(sum(vals))
 
 
 @dataclass
@@ -87,6 +97,7 @@ class Proto:
     nonce: str = ""; enc_msg: str = ""
     decrypted: str = ""
     s_ecdh_pk_time_ms: float | None = None
+    s_kyber_pk_time_ms: float | None = None
     c_ecdh_pk_time_ms: float | None = None
     ecdh_ss_c_time_ms: float | None = None
     ecdh_ss_s_time_ms: float | None = None
@@ -218,8 +229,7 @@ class LiveProto(QtCore.QObject):
                         continue
                     try:
                         evt = json.loads(line.decode("utf-8", errors="replace"))
-                        evt_name = evt.get("event", "?")
-                        _log_srv.debug("← %s", evt_name)
+                        _log_srv.debug("← %s", json.dumps(evt, separators=(',', ':')))
                         self.server_event.emit(evt)
                     except json.JSONDecodeError:
                         _log_gui.warning("Reader: non-JSON line: %s", line[:200])
@@ -236,10 +246,11 @@ class LiveProto(QtCore.QObject):
         if self._running:
             self.status_msg.emit(f"[DIAG] reader exited: server={srv_alive}")
 
-    def run_client(self, message=""):
+    def run_client(self, message="", kex_mode=MODE_HYBRID):
         """Run the client locally or via SSH to the board."""
         self._client_message = message
-        _log_cli.info("run_client(msg=%r)", message[:60] if message else "")
+        self._client_kex_mode = kex_mode or MODE_HYBRID
+        _log_cli.info("run_client(msg=%r, mode=%s)", message[:60] if message else "", self._client_kex_mode)
         if _LOCAL_CLIENT:
             self.status_msg.emit("Running client locally...")
         else:
@@ -252,12 +263,14 @@ class LiveProto(QtCore.QObject):
             cmd = [_LOCAL_CLIENT, "127.0.0.1", "--json", "--port", str(_PQC_PORT)]
             if self._client_message:
                 cmd += ["--msg", self._client_message]
+            cmd += ["--kex-mode", self._client_kex_mode]
         else:
             # Route board->server traffic through this SSH session for reliability on WSL/firewalled setups.
             tunnel_port = 19090
             remote_parts = [_BOARD_CLIENT, "127.0.0.1", "--json", "--port", str(tunnel_port)]
             if self._client_message:
                 remote_parts += ["--msg", self._client_message]
+            remote_parts += ["--kex-mode", self._client_kex_mode]
             remote_cmd = " ".join(shlex.quote(p) for p in remote_parts)
             cmd = [
                 "ssh", "-o", "ConnectTimeout=5",
@@ -2109,9 +2122,11 @@ class BoardPanel(QtWidgets.QWidget):
         sl = QtWidgets.QHBoxLayout(status_bar); sl.setContentsMargins(4, 4, 4, 4)
         self._status_label = QtWidgets.QLabel("● IDLE")
         self._status_label.setStyleSheet(f"color:{pal['read_muted_text']}; font-weight:bold; font-size:11px; background:transparent; border:none;")
+        self._total_time_label = QtWidgets.QLabel("")
+        self._total_time_label.setStyleSheet(f"color:{pal['counter_color']}; font-size:11px; font-family:'Consolas','Monaco',monospace; background:transparent; border:none;")
         self._phase_label = QtWidgets.QLabel("")
         self._phase_label.setStyleSheet(f"color:{pal['counter_color']}; font-size:11px; background:transparent; border:none;")
-        sl.addWidget(self._status_label); sl.addStretch(); sl.addWidget(self._phase_label)
+        sl.addWidget(self._status_label); sl.addStretch(); sl.addWidget(self._total_time_label); sl.addSpacing(10); sl.addWidget(self._phase_label)
         cl.addWidget(status_bar)
 
         # Step indicator bar
@@ -2193,6 +2208,12 @@ class BoardPanel(QtWidgets.QWidget):
 
     def set_phase(self, text):
         self._phase_label.setText(text)
+
+    def set_total_time_ms(self, time_ms: float | None):
+        if time_ms in (None, ""):
+            self._total_time_label.setText("")
+            return
+        self._total_time_label.setText(f"TOTAL: {_format_duration_us(time_ms)}")
 
     def set_step(self, step_num: int, total: int, label: str, color: str):
         """Show step indicator like 'Step 2/5: KDF Step-1 — ECDH Shared Secret'."""
@@ -2282,6 +2303,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self._version_label.setStyleSheet("color:#4caf50; background:transparent; font-size:11px;")
         version = self._version_label
 
+        self._selected_kex_mode = None
+        self._active_kex_mode = None
+        self._kex_combo = QtWidgets.QComboBox()
+        self._kex_combo.addItem("Select KEX mode...", None)
+        self._kex_combo.addItem("ECDH-only", MODE_ECDH)
+        self._kex_combo.addItem("PQC-only", MODE_PQC)
+        self._kex_combo.addItem("Hybrid", MODE_HYBRID)
+        self._kex_combo.setCurrentIndex(0)
+        self._kex_combo.setFixedHeight(30)
+        self._kex_combo.setStyleSheet(
+            "QComboBox { background:#1a1a1a; border:1px solid #58595b; border-radius:6px; color:#e0e0e0; font-size:10px; font-weight:bold; padding:0 8px; min-width:120px; }"
+            " QComboBox::drop-down { border:none; width:18px; }"
+            " QComboBox QAbstractItemView { background:#111; color:#ddd; selection-background-color:#2a2a2a; border:1px solid #333; }")
+        self._kex_combo.currentIndexChanged.connect(self._on_kex_mode_changed)
+
         # Mode toggle
         mc = QtWidgets.QWidget(); mc.setStyleSheet("background:transparent;")
         ml = QtWidgets.QHBoxLayout(mc); ml.setContentsMargins(0,0,0,0); ml.setSpacing(8)
@@ -2334,7 +2370,12 @@ class MainWindow(QtWidgets.QMainWindow):
             d = QtWidgets.QLabel(f"● {txt}"); d.setStyleSheet(f"color:{clr}; font-size:9px; font-weight:bold; background:transparent;")
             legl.addWidget(d)
 
+        kex_lbl = QtWidgets.QLabel("KEX:")
+        kex_lbl.setStyleSheet("color:#888; font-size:10px; font-weight:bold; background:transparent;")
+
         bl.addWidget(title); bl.addStretch(); bl.addWidget(version); bl.addSpacing(10)
+        bl.addWidget(kex_lbl); bl.addSpacing(4)
+        bl.addWidget(self._kex_combo); bl.addSpacing(10)
         bl.addWidget(legend); bl.addSpacing(10)
         bl.addWidget(self._clear_logs_btn); bl.addSpacing(8); bl.addWidget(self._reset_btn); bl.addSpacing(8)
         bl.addWidget(self._delay_label); bl.addSpacing(4); bl.addWidget(self._delay_spin); bl.addSpacing(4)
@@ -2430,7 +2471,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._server_bundle_ready = False
         self._process_requested = False
         self._server_processing_started = False
-        self._pending_message = ""  # message from popup, consumed by _advance_to_client
         self._process_retry_timer: QtCore.QTimer | None = None
         self._process_retry_count = 0
         self._next_retry_timer: QtCore.QTimer | None = None
@@ -2471,6 +2511,79 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _is_interactive(self):
         return not self._mode_toggle.isChecked()
+
+    def _on_kex_mode_changed(self, _index):
+        self._selected_kex_mode = self._kex_combo.currentData()
+        # When an exchange is not actively running, apply the choice immediately
+        # so bundle validation and slot expectations reflect the selected config.
+        if self._exchange_phase in ("IDLE", "KEYS_READY", "COMPLETE"):
+            self._active_kex_mode = self._selected_kex_mode
+            # Force bundle slot schemas to be rebuilt for the new mode.
+            self.panelA._bundle_collector.clear()
+            self.panelB._bundle_collector.clear()
+        if self._selected_kex_mode:
+            self.broker.log_relay(f"KEX mode selected: {self._selected_kex_mode.upper()}", "#90a4ae")
+        else:
+            self.broker.log_relay("Select a KEX mode to enable key-material flow", "#90a4ae")
+        self._refresh()
+
+    def _effective_mode(self):
+        # During an active run, lock display/validation to the negotiated mode.
+        if self._exchange_phase in ("CLIENT_RUNNING", "BUNDLE_READY", "PROCESSING"):
+            return self._active_kex_mode or self._selected_kex_mode
+        # Otherwise, reflect the latest UI selection.
+        return self._selected_kex_mode or self._active_kex_mode
+
+    def _mode_is_selected(self):
+        return self._effective_mode() in (MODE_ECDH, MODE_PQC, MODE_HYBRID)
+
+    def _mode_label(self, mode: str | None = None) -> str:
+        selected = mode or self._effective_mode()
+        return selected.upper() if selected else "UNSELECTED"
+
+    def _uses_ecdh(self):
+        return self._effective_mode() in (MODE_ECDH, MODE_HYBRID)
+
+    def _uses_kyber(self):
+        return self._effective_mode() in (MODE_PQC, MODE_HYBRID)
+
+    def _client_total_steps(self):
+        mode = self._effective_mode()
+        if mode == MODE_PQC:
+            return 3
+        if mode == MODE_ECDH:
+            return 4
+        if mode == MODE_HYBRID:
+            return 5
+        return 0
+
+    def _server_total_steps(self):
+        mode = self._effective_mode()
+        if mode == MODE_HYBRID:
+            return 4
+        if mode in (MODE_ECDH, MODE_PQC):
+            return 3
+        return 0
+
+    def _client_step_index(self, event_name: str):
+        mode = self._effective_mode()
+        if mode == MODE_ECDH:
+            mapping = {"ecdh_keygen": 1, "ecdh_derive": 2, "hybrid_key": 3, "encrypt": 4}
+        elif mode == MODE_PQC:
+            mapping = {"kyber_encap": 1, "hybrid_key": 2, "encrypt": 3}
+        else:
+            mapping = {"ecdh_keygen": 1, "ecdh_derive": 2, "kyber_encap": 3, "hybrid_key": 4, "encrypt": 5}
+        return mapping.get(event_name, 0)
+
+    def _server_step_index(self, event_name: str):
+        mode = self._effective_mode()
+        if mode == MODE_ECDH:
+            mapping = {"ecdh_derive": 1, "hybrid_key": 2, "decrypt": 3}
+        elif mode == MODE_PQC:
+            mapping = {"kyber_decap": 1, "hybrid_key": 2, "decrypt": 3}
+        else:
+            mapping = {"ecdh_derive": 1, "kyber_decap": 2, "hybrid_key": 3, "decrypt": 4}
+        return mapping.get(event_name, 0)
 
     # ── live server management ────────────────────────────────
 
@@ -2583,6 +2696,19 @@ class MainWindow(QtWidgets.QMainWindow):
         elif event == "listening":
             self.panelB.log_step(f"Listening on port {evt.get('port', '?')}", CLR_ECDH)
 
+        elif event == "keysizes":
+            self.panelB.log_step("Key Sizes", "#90a4ae")
+            self.panelB.log_val("kyber_variant", str(evt.get("kyber_variant", "?")), "#90a4ae")
+            self.panelB.log_val("kyber_pk", str(evt.get("kyber_pk", "?")), "#90a4ae")
+            self.panelB.log_val("ecdh_pk", str(evt.get("ecdh_pk", "?")), "#90a4ae")
+            self.panelB.log_val("kyber_sk", str(evt.get("kyber_sk", "?")), "#90a4ae")
+            self.panelB.log_val("ecdh_sk", str(evt.get("ecdh_sk", "?")), "#90a4ae")
+            self.panelB.log_val("kyber_ss", str(evt.get("kyber_ss", "?")), "#90a4ae")
+            self.panelB.log_val("ecdh_ss", str(evt.get("ecdh_ss", "?")), "#90a4ae")
+            self.panelB.log_val("kyber_ct", str(evt.get("kyber_ct", "?")), "#90a4ae")
+            self.panelB.log_val("hybrid_key", str(evt.get("hybrid_key", "?")), "#90a4ae")
+            self.panelB.log_val("nonce", str(evt.get("nonce", "?")), "#90a4ae")
+
         elif event == "client_connected":
             self.panelB.log_step(f"Client connected from {evt.get('from', '?')}", CLR_ECDH)
             self.panelB.set_status("PROCESSING", CLR_ECDH)
@@ -2603,8 +2729,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         elif event == "kyber_pk_loaded":
             pk = evt.get("pk", "")
+            t = evt.get("time_ms", 0)
             p.s_kyber_pk = pk
-            self.panelB.log_step("Static Kyber-768 keypair loaded", CLR_KYBER)
+            p.s_kyber_pk_time_ms = t
+            self.panelB.log_step(f"Kyber Keygen ({t:.3f} ms)", CLR_KYBER)
             self.panelB.log_val("s_kyber_pk", pk, CLR_KYBER)
             self._refresh()
 
@@ -2613,13 +2741,18 @@ class MainWindow(QtWidgets.QMainWindow):
             self.panelB.set_phase("Keys sent")
 
         elif event == "client_data_received":
-            c_pk = evt.get("ecdh_pk", "")
-            ct = evt.get("kyber_ct", "")
+            self._active_kex_mode = evt.get("mode", self._active_kex_mode)
+            has_ecdh = evt.get("has_ecdh", True)
+            has_kyber = evt.get("has_kyber", True)
+            c_pk = evt.get("ecdh_pk", "") if has_ecdh else ""
+            ct = evt.get("kyber_ct", "") if has_kyber else ""
             p.c_ecdh_pk = c_pk
             p.kyber_ct = ct
-            self.panelB.log_step("Received client bundle", CLR_ECDH)
-            self.panelB.log_val("c_ecdh_pk", c_pk, CLR_ECDH)
-            self.panelB.log_val("kyber_ct", ct, CLR_KYBER)
+            self.panelB.log_step(f"Received client bundle ({self._mode_label(self._active_kex_mode)})", CLR_ECDH)
+            if c_pk:
+                self.panelB.log_val("c_ecdh_pk", c_pk, CLR_ECDH)
+            if ct:
+                self.panelB.log_val("kyber_ct", ct, CLR_KYBER)
             self._refresh()
 
         elif event == "ecdh_derive":
@@ -2629,8 +2762,10 @@ class MainWindow(QtWidgets.QMainWindow):
             t = evt.get("time_ms", 0)
             p.ecdh_ss_s = ss
             p.ecdh_ss_s_time_ms = t
-            self.panelB.set_step(1, 4, "KDF Step-1 \u2014 ECDH Shared Secret", CLR_ECDH)
-            self.panelB.log_step(f"KDF Step-1: ECDH Shared Secret ({_format_duration_us(t)})", CLR_ECDH)
+            step_idx = self._server_step_index("ecdh_derive")
+            step_total = self._server_total_steps()
+            self.panelB.set_step(step_idx, step_total, "KDF Step \u2014 ECDH Shared Secret", CLR_ECDH)
+            self.panelB.log_step(f"ECDH Shared Secret ({_format_duration_us(t)})", CLR_ECDH)
             self.panelB.log_val("ecdh_shared", ss, CLR_ECDH)
             self._refresh()
 
@@ -2640,18 +2775,23 @@ class MainWindow(QtWidgets.QMainWindow):
             t = evt.get("time_ms", 0)
             p.kyber_ss_s = ss
             p.kyber_ss_s_time_ms = t
-            self.panelB.set_step(2, 4, "KDF Step-2 \u2014 Kyber Decapsulation", CLR_KYBER)
-            self.panelB.log_step(f"KDF Step-2: Kyber Decapsulation ({_format_duration_us(t)})", CLR_KYBER)
+            step_idx = self._server_step_index("kyber_decap")
+            step_total = self._server_total_steps()
+            self.panelB.set_step(step_idx, step_total, "KDF Step \u2014 Kyber Decapsulation", CLR_KYBER)
+            self.panelB.log_step(f"Kyber Decapsulation ({_format_duration_us(t)})", CLR_KYBER)
             self.panelB.log_val("kyber_ss", ss, CLR_KYBER)
             self._refresh()
 
         elif event == "hybrid_key":
+            self._active_kex_mode = evt.get("mode", self._active_kex_mode)
             key = evt.get("key", "")
             t = evt.get("time_ms", 0)
             p.hybrid_s = key
             p.hybrid_s_time_ms = t
-            self.panelB.set_step(3, 4, "Hybrid KDF \u2014 SHA-256(ecdh || kyber)", CLR_HYBRID)
-            self.panelB.log_step(f"Hybrid KDF: SHA-256(ecdh || kyber) ({_format_duration_us(t)})", CLR_HYBRID)
+            step_idx = self._server_step_index("hybrid_key")
+            step_total = self._server_total_steps()
+            self.panelB.set_step(step_idx, step_total, "Session KDF \u2014 SHA-256(selected secret(s))", CLR_HYBRID)
+            self.panelB.log_step(f"Session KDF ({self._active_kex_mode.upper()}) ({_format_duration_us(t)})", CLR_HYBRID)
             self.panelB.log_val("hybrid_key", key, CLR_HYBRID)
             self._refresh()
 
@@ -2661,7 +2801,9 @@ class MainWindow(QtWidgets.QMainWindow):
             t = evt.get("time_ms", 0)
             p.decrypted = pt
             p.decrypt_time_ms = t
-            self.panelB.set_step(4, 4, "Decrypt \u2014 Message Recovered", "#4caf50")
+            step_idx = self._server_step_index("decrypt")
+            step_total = self._server_total_steps()
+            self.panelB.set_step(step_idx, step_total, "Decrypt \u2014 Message Recovered", "#4caf50")
             self.panelB.log_step(f"Decrypt ({_format_duration_us(t)})", "#4caf50")
             self.panelB.log_val("message", pt, "#4caf50")
             self.panelB.show_decrypted(pt)
@@ -2689,18 +2831,19 @@ class MainWindow(QtWidgets.QMainWindow):
             phase_name = evt.get("phase", "")
             _log_app.info("PHASE event: %s  (current exchange_phase=%s)", phase_name, self._exchange_phase)
             if phase_name == "keys_ready":
+                self._active_kex_mode = self._selected_kex_mode
                 self._stop_next_retry()
                 self._server_bundle_ready = False
                 self._process_requested = False
                 self._server_processing_started = False
                 self._exchange_phase = "KEYS_READY"
                 self.panelB.set_status("KEYS READY", "#4caf50")
-                self.panelB.set_phase("Drag keys to Vehicle \u2192")
+                if self._mode_is_selected():
+                    self.panelB.set_phase(f"Drag keys to Vehicle \u2192 ({self._mode_label(self._active_kex_mode)})")
+                else:
+                    self.panelB.set_phase("Select KEX mode to display key material")
                 self._refresh()
-                if self._is_interactive():
-                    # Show message popup as soon as keys are ready
-                    QtCore.QTimer.singleShot(300, self._prompt_message)
-                elif self._auto_running:
+                if not self._is_interactive() and self._auto_running:
                     delay = int(self._delay_spin.value() * 1000)
                     QtCore.QTimer.singleShot(delay, self._auto_advance_client)
             elif phase_name == "bundle_received":
@@ -2721,6 +2864,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self.panelB.log_step(f"Error: {evt.get('msg', '?')}", "#ef5350")
             self.panelB.set_status("ERROR", "#ef5350")
 
+        elif event == "phase" and evt.get("phase") == "reset":
+            # Server acknowledged RESET and is about to regenerate keys.
+            # The GUI already cleared state in _on_reset; just update status.
+            self.panelB.set_status("CONNECTED", "#4caf50")
+            self.panelB.set_phase("Generating keys...")
+
     def _handle_client_event(self, evt):
         """Process one client JSON event."""
         event = evt.get("event", "")
@@ -2730,6 +2879,24 @@ class MainWindow(QtWidgets.QMainWindow):
         if event == "connected":
             self.panelA.set_status("CONNECTED", "#4caf50")
             self.panelA.log_step(f"Connected to {evt.get('server', '?')}", CLR_ECDH)
+
+        elif event == "keysizes":
+            self.panelA.log_step("Key Sizes", "#90a4ae")
+            self.panelA.log_val("kyber_variant", str(evt.get("kyber_variant", "?")), "#90a4ae")
+            self.panelA.log_val("kyber_pk", str(evt.get("kyber_pk", "?")), "#90a4ae")
+            self.panelA.log_val("ecdh_pk", str(evt.get("ecdh_pk", "?")), "#90a4ae")
+            self.panelA.log_val("kyber_sk", str(evt.get("kyber_sk", "?")), "#90a4ae")
+            self.panelA.log_val("ecdh_sk", str(evt.get("ecdh_sk", "?")), "#90a4ae")
+            self.panelA.log_val("kyber_ss", str(evt.get("kyber_ss", "?")), "#90a4ae")
+            self.panelA.log_val("ecdh_ss", str(evt.get("ecdh_ss", "?")), "#90a4ae")
+            self.panelA.log_val("kyber_ct", str(evt.get("kyber_ct", "?")), "#90a4ae")
+            self.panelA.log_val("hybrid_key", str(evt.get("hybrid_key", "?")), "#90a4ae")
+            self.panelA.log_val("nonce", str(evt.get("nonce", "?")), "#90a4ae")
+
+        elif event == "kex_mode_selected":
+            self._active_kex_mode = evt.get("mode", self._active_kex_mode)
+            self.panelA.log_step(f"KEX mode: {self._mode_label(self._active_kex_mode)}", "#90a4ae")
+            self._refresh()
 
         elif event == "server_keys_received":
             ecdh_pk = evt.get("ecdh_pk", "")
@@ -2743,7 +2910,9 @@ class MainWindow(QtWidgets.QMainWindow):
             t = evt.get("time_ms", 0)
             p.c_ecdh_pk = pk
             p.c_ecdh_pk_time_ms = t
-            self.panelA.set_step(1, 5, "ECDH Keygen", CLR_ECDH)
+            step_idx = self._client_step_index("ecdh_keygen")
+            step_total = self._client_total_steps()
+            self.panelA.set_step(step_idx, step_total, "ECDH Keygen", CLR_ECDH)
             self.panelA.log_step(f"Client ECDH Keygen ({_format_duration_us(t)})", CLR_ECDH)
             self.panelA.log_val("c_ecdh_pk", pk, CLR_ECDH)
             self.panelA.set_status("PROCESSING", CLR_ECDH)
@@ -2754,8 +2923,10 @@ class MainWindow(QtWidgets.QMainWindow):
             t = evt.get("time_ms", 0)
             p.ecdh_ss_c = ss
             p.ecdh_ss_c_time_ms = t
-            self.panelA.set_step(2, 5, "KDF Step-1 \u2014 ECDH Shared Secret", CLR_ECDH)
-            self.panelA.log_step(f"KDF Step-1: ECDH Shared Secret ({_format_duration_us(t)})", CLR_ECDH)
+            step_idx = self._client_step_index("ecdh_derive")
+            step_total = self._client_total_steps()
+            self.panelA.set_step(step_idx, step_total, "KDF Step \u2014 ECDH Shared Secret", CLR_ECDH)
+            self.panelA.log_step(f"ECDH Shared Secret ({_format_duration_us(t)})", CLR_ECDH)
             self.panelA.log_val("ecdh_shared", ss, CLR_ECDH)
             self._refresh()
 
@@ -2766,19 +2937,24 @@ class MainWindow(QtWidgets.QMainWindow):
             p.kyber_ct = ct
             p.kyber_ss_c = ss
             p.kyber_ss_c_time_ms = t
-            self.panelA.set_step(3, 5, "KDF Step-2 \u2014 Kyber Encapsulation", CLR_KYBER)
-            self.panelA.log_step(f"KDF Step-2: Kyber Encapsulation ({_format_duration_us(t)})", CLR_KYBER)
+            step_idx = self._client_step_index("kyber_encap")
+            step_total = self._client_total_steps()
+            self.panelA.set_step(step_idx, step_total, "KDF Step \u2014 Kyber Encapsulation", CLR_KYBER)
+            self.panelA.log_step(f"Kyber Encapsulation ({_format_duration_us(t)})", CLR_KYBER)
             self.panelA.log_val("kyber_ct", ct, CLR_KYBER)
             self.panelA.log_val("kyber_ss", ss, CLR_KYBER)
             self._refresh()
 
         elif event == "hybrid_key":
+            self._active_kex_mode = evt.get("mode", self._active_kex_mode)
             key = evt.get("key", "")
             t = evt.get("time_ms", 0)
             p.hybrid_c = key
             p.hybrid_c_time_ms = t
-            self.panelA.set_step(4, 5, "Hybrid KDF \u2014 SHA-256(ecdh || kyber)", CLR_HYBRID)
-            self.panelA.log_step(f"Hybrid KDF ({_format_duration_us(t)})", CLR_HYBRID)
+            step_idx = self._client_step_index("hybrid_key")
+            step_total = self._client_total_steps()
+            self.panelA.set_step(step_idx, step_total, "Session KDF \u2014 SHA-256(selected secret(s))", CLR_HYBRID)
+            self.panelA.log_step(f"Session KDF ({self._active_kex_mode.upper()}) ({_format_duration_us(t)})", CLR_HYBRID)
             self.panelA.log_val("hybrid_key", key, CLR_HYBRID)
             self._refresh()
 
@@ -2789,7 +2965,9 @@ class MainWindow(QtWidgets.QMainWindow):
             p.enc_msg = ct
             p.nonce = nonce
             p.encrypt_time_ms = t
-            self.panelA.set_step(5, 5, "Encrypt \u2014 Message Sealed", CLR_CIPHER)
+            step_idx = self._client_step_index("encrypt")
+            step_total = self._client_total_steps()
+            self.panelA.set_step(step_idx, step_total, "Encrypt \u2014 Message Sealed", CLR_CIPHER)
             self.panelA.log_step(f"Encrypt ({_format_duration_us(t)})", CLR_CIPHER)
             self.panelA.log_val("ciphertext", ct, CLR_CIPHER)
             self._refresh()
@@ -2814,13 +2992,19 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _client_bundle_complete(self) -> bool:
         p = self.proto
-        return bool(p.kyber_ct and p.nonce and p.enc_msg)
+        has_ecdh = (not self._uses_ecdh()) or bool(p.c_ecdh_pk)
+        has_kyber = (not self._uses_kyber()) or bool(p.kyber_ct)
+        return bool(has_ecdh and has_kyber and p.nonce and p.enc_msg)
 
     def _on_vehicle_drop(self, token_type):
         """Server keys dropped on broker top zone → start client."""
         _log_app.info("DROP vehicle: token=%s phase=%s", token_type, self._exchange_phase)
         if token_type == "server_keys" and self._exchange_phase == "KEYS_READY":
-            self.broker.log_relay("Server Keys \u2192 Vehicle (ECDH PK + Kyber PK)")
+            if not self._mode_is_selected():
+                self.broker.log_relay("Select KEX mode first", "#ef5350")
+                return
+            mode_label = self._effective_mode().upper()
+            self.broker.log_relay(f"Server Keys \u2192 Vehicle ({mode_label})")
             # Show connected + server_keys_received + ecdh_keygen instantly
             self._instant_count = 3
             self._advance_to_client()
@@ -2830,7 +3014,8 @@ class MainWindow(QtWidgets.QMainWindow):
         _log_app.info("DROP server: token=%s phase=%s bundle_complete=%s",
                      token_type, self._exchange_phase, self._client_bundle_complete())
         if token_type == "client_bundle" and self._client_bundle_complete():
-            self.broker.log_relay("Client Bundle → Server (ECDH PK + Kyber CT + Nonce + Enc Msg)")
+            mode_label = self._effective_mode().upper()
+            self.broker.log_relay(f"Client Bundle → Server ({mode_label} + Nonce + Enc Msg)")
             # Show server_keys_received instantly
             self._instant_count = 1
             self._advance_to_process()
@@ -2838,38 +3023,33 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_token_send(self, token_type):
         """Send button clicked on a token."""
         if token_type == "server_keys" and self._exchange_phase == "KEYS_READY":
-            self.broker.log_relay("Server Keys → Vehicle (ECDH PK + Kyber PK)")
+            if not self._mode_is_selected():
+                self.broker.log_relay("Select KEX mode first", "#ef5350")
+                return
+            mode_label = self._effective_mode().upper()
+            self.broker.log_relay(f"Server Keys → Vehicle ({mode_label})")
             self._advance_to_client()
         elif token_type == "client_bundle" and self._client_bundle_complete():
-            self.broker.log_relay("Client Bundle → Server (ECDH PK + Kyber CT + Nonce + Enc Msg)")
+            mode_label = self._effective_mode().upper()
+            self.broker.log_relay(f"Client Bundle → Server ({mode_label} + Nonce + Enc Msg)")
             self._advance_to_process()
-
-    def _prompt_message(self):
-        """Show message input dialog (interactive mode, called when keys are ready)."""
-        if self._exchange_phase != "KEYS_READY" or not self._is_interactive():
-            return
-        dlg = _MessageDialog(self)
-        if dlg.exec() == QtWidgets.QDialog.Accepted:
-            msg = dlg.get_message()
-            if msg:
-                self._pending_message = msg
-                self.panelA.log_step(f"Secret message: \"{msg}\"", "#90a4ae")
-                self.panelA.set_phase("Message ready \u2014 drag keys to Vehicle")
 
     def _advance_to_client(self):
         """Start the client on the board."""
         _log_app.info("_advance_to_client: phase=%s", self._exchange_phase)
+        if not self._selected_kex_mode:
+            self.panelA.set_status("ERROR", "#ef5350")
+            self.panelA.set_phase("Select KEX mode first")
+            self.broker.log_relay("Select KEX mode before starting client", "#ef5350")
+            return
         msg = ""
         if self._is_interactive():
-            # Use message from earlier popup, or prompt now as fallback
-            msg = getattr(self, '_pending_message', '')
-            if not msg:
-                dlg = _MessageDialog(self)
-                if dlg.exec() != QtWidgets.QDialog.Accepted:
-                    _log_app.info("_advance_to_client: user cancelled message dialog")
-                    return
-                msg = dlg.get_message()
-            self._pending_message = ''  # consume it
+            # Prompt right before client start (after bundle drop from broker).
+            dlg = _MessageDialog(self)
+            if dlg.exec() != QtWidgets.QDialog.Accepted:
+                _log_app.info("_advance_to_client: user cancelled message dialog")
+                return
+            msg = dlg.get_message()
         else:
             msg = "Hello from Vehicle — PQC secured!"
         if not msg:
@@ -2880,12 +3060,13 @@ class MainWindow(QtWidgets.QMainWindow):
             self._auto_start_btn.setText("\u25b6  RUN EXCHANGE")
             return
         self._exchange_phase = "CLIENT_RUNNING"
+        self._active_kex_mode = self._selected_kex_mode
         self.panelA.set_status("CONNECTING", CLR_ECDH)
-        self.panelA.set_phase("Running client on board...")
+        self.panelA.set_phase(f"Running client on board ({self._active_kex_mode.upper()})...")
         self.panelA.log_step(f"Message: \"{msg}\"", "#90a4ae")
         self._refresh()
         if self._live_proto:
-            self._live_proto.run_client(msg)
+            self._live_proto.run_client(msg, self._active_kex_mode)
 
     def _advance_to_process(self):
         """Queue/signal server-side processing of the received bundle."""
@@ -2986,11 +3167,14 @@ class MainWindow(QtWidgets.QMainWindow):
         """Reset proto & logs, then trigger a real exchange via SSH."""
         if not self._live_proto:
             return
+        if not self._selected_kex_mode:
+            self.broker.log_relay("Select KEX mode before running exchange", "#ef5350")
+            return
         self.proto.reset()
         self.panelA.clear_log(); self.panelB.clear_log()
         self.panelA.set_status("CONNECTING", CLR_ECDH)
         self.panelB.set_status("LISTENING", CLR_ECDH)
-        self._live_proto.run_client()
+        self._live_proto.run_client(kex_mode=self._selected_kex_mode)
 
     # ── actions ───────────────────────────────────────────────
 
@@ -2998,29 +3182,29 @@ class MainWindow(QtWidgets.QMainWindow):
         _log_app.info("_on_reset: phase=%s srv_bundle=%s proc_req=%s",
                      self._exchange_phase, self._server_bundle_ready, self._process_requested)
         self._flush_event_queue()
-        need_next = (self._exchange_phase == "COMPLETE")
-        _log_app.info("_on_reset: need_next=%s", need_next)
+        # Determine what command to send the server based on current phase:
+        #  COMPLETE        → NEXT  (server is blocking in gui_wait_command("NEXT"))
+        #  KEYS_READY /    → RESET (server is blocking in accept_or_reset or
+        #  BUNDLE_READY         gui_wait_command("PROCESS"); RESET causes it to
+        #                       regenerate keys and re-emit key events)
+        need_next  = (self._exchange_phase == "COMPLETE")
+        need_reset = (self._exchange_phase in ("KEYS_READY", "BUNDLE_READY"))
+        _log_app.info("_on_reset: need_next=%s need_reset=%s", need_next, need_reset)
         self._stop_process_retry()
         self._stop_next_retry()
         self._server_bundle_ready = False
         self._process_requested = False
         self._server_processing_started = False
-        self._pending_message = ""
-        # Preserve server keys if they exist and we're not cycling (COMPLETE→NEXT)
-        saved_ecdh = self.proto.s_ecdh_pk
-        saved_kyber = self.proto.s_kyber_pk
         self.proto.reset()
-        if not need_next and saved_ecdh:
-            # Server still has these keys — keep them visible
-            self.proto.s_ecdh_pk = saved_ecdh
-            self.proto.s_kyber_pk = saved_kyber
-            self._exchange_phase = "KEYS_READY"
-        else:
-            self._exchange_phase = "IDLE"
+        self._exchange_phase = "IDLE"
         self.panelA.clear_log(); self.panelB.clear_log()
         self.broker.clear_log()
-        self.panelA.set_status("IDLE"); self.panelB.set_status("IDLE" if need_next else "KEYS READY")
-        self.panelA.set_phase(""); self.panelB.set_phase("" if need_next else "Drag keys to Vehicle →")
+        self._active_kex_mode = self._selected_kex_mode
+        self.panelA._bundle_collector.clear()
+        self.panelB._bundle_collector.clear()
+        self.panelA.set_status("IDLE"); self.panelB.set_status("IDLE")
+        self.panelA.set_phase("")
+        self.panelB.set_phase("")
         self._auto_exchange_count = 0
         self._auto_running = False
         self._auto_start_btn.setEnabled(True)
@@ -3029,6 +3213,12 @@ class MainWindow(QtWidgets.QMainWindow):
         if self._live_proto and need_next:
             _log_app.info("_on_reset: sending NEXT + starting retry")
             self._live_proto.send_command("NEXT")
+            self._start_next_retry()
+            self.panelB.set_status("CONNECTED", "#4caf50")
+            self.panelB.set_phase("Generating keys...")
+        elif self._live_proto and need_reset:
+            _log_app.info("_on_reset: sending RESET — server will regenerate keys")
+            self._live_proto.send_command("RESET")
             self._start_next_retry()
             self.panelB.set_status("CONNECTED", "#4caf50")
             self.panelB.set_phase("Generating keys...")
@@ -3095,68 +3285,103 @@ class MainWindow(QtWidgets.QMainWindow):
         p = self.proto
         bundle_complete = self._client_bundle_complete()
         phase = self._exchange_phase
+        mode_selected = self._mode_is_selected()
+        use_ecdh = self._uses_ecdh()
+        use_kyber = self._uses_kyber()
+        client_steps = self._client_total_steps()
+        server_steps = self._server_total_steps()
 
         # ── Server keys ───────────────────────────────────────
         s_keys = []
-        if p.s_ecdh_pk: s_keys.append(KeyEntry("Server ECDH Public Key (X25519)", p.s_ecdh_pk, CLR_ECDH, _step_with_duration("Keygen", p.s_ecdh_pk_time_ms),
+        if mode_selected and use_ecdh and p.s_ecdh_pk: s_keys.append(KeyEntry("Server ECDH Public Key (X25519)", p.s_ecdh_pk, CLR_ECDH, _step_with_duration("Keygen", p.s_ecdh_pk_time_ms),
                                                  bundle_key="s_ecdh_pk" if phase == "KEYS_READY" else "", size_bytes=32, flow_slot="ecdh_1"))
-        if p.s_kyber_pk: s_keys.append(KeyEntry("Server Kyber-768 Public Key", p.s_kyber_pk, CLR_KYBER, "Keygen",
+        if mode_selected and use_kyber and p.s_kyber_pk: s_keys.append(KeyEntry("Server Kyber-768 Public Key", p.s_kyber_pk, CLR_KYBER, _step_with_duration("Keygen", p.s_kyber_pk_time_ms),
                                                   bundle_key="s_kyber_pk" if phase == "KEYS_READY" else "", size_bytes=1184, flow_slot="kyber_1"))
-        if p.ecdh_ss_s: s_keys.append(KeyEntry("ECDH Shared Secret", p.ecdh_ss_s, CLR_ECDH, _step_with_duration("Step 1/4", p.ecdh_ss_s_time_ms), flow_slot="ecdh_2"))
-        if p.kyber_ss_s: s_keys.append(KeyEntry("Kyber Shared Secret", p.kyber_ss_s, CLR_KYBER, _step_with_duration("Step 2/4", p.kyber_ss_s_time_ms), flow_slot="kyber_2"))
-        if p.hybrid_s: s_keys.append(KeyEntry("Hybrid Key", p.hybrid_s, CLR_HYBRID, _step_with_duration("Step 3/4", p.hybrid_s_time_ms), flow_slot="hybrid"))
-        if p.decrypted: s_keys.append(KeyEntry("Decrypted Message", p.decrypted, "#4caf50", _step_with_duration("Step 4/4", p.decrypt_time_ms), flow_slot="decrypt"))
+        if mode_selected and use_ecdh and p.ecdh_ss_s: s_keys.append(KeyEntry("ECDH Shared Secret", p.ecdh_ss_s, CLR_ECDH, _step_with_duration(f"Step {self._server_step_index('ecdh_derive')}/{server_steps}", p.ecdh_ss_s_time_ms), flow_slot="ecdh_2"))
+        if mode_selected and use_kyber and p.kyber_ss_s: s_keys.append(KeyEntry("Kyber Shared Secret", p.kyber_ss_s, CLR_KYBER, _step_with_duration(f"Step {self._server_step_index('kyber_decap')}/{server_steps}", p.kyber_ss_s_time_ms), flow_slot="kyber_2"))
+        if mode_selected and p.hybrid_s: s_keys.append(KeyEntry("Session Key", p.hybrid_s, CLR_HYBRID, _step_with_duration(f"Step {self._server_step_index('hybrid_key')}/{server_steps}", p.hybrid_s_time_ms), flow_slot="hybrid"))
+        if mode_selected and p.decrypted: s_keys.append(KeyEntry("Decrypted Message", p.decrypted, "#4caf50", _step_with_duration(f"Step {self._server_step_index('decrypt')}/{server_steps}", p.decrypt_time_ms), flow_slot="decrypt"))
         self.panelB.set_keys(s_keys)
+
+        server_total_ms = _sum_times_ms([
+            p.s_ecdh_pk_time_ms if use_ecdh else None,
+            p.s_kyber_pk_time_ms if use_kyber else None,
+            p.ecdh_ss_s_time_ms if use_ecdh else None,
+            p.kyber_ss_s_time_ms if use_kyber else None,
+            p.hybrid_s_time_ms,
+            p.decrypt_time_ms,
+        ])
+        self.panelB.set_total_time_ms(server_total_ms if mode_selected else None)
 
         # Server bundle collector — show during KEYS_READY phase
         s_bc = self.panelB._bundle_collector
-        if phase == "KEYS_READY" and p.s_ecdh_pk and p.s_kyber_pk and not s_bc.is_complete():
-            if not s_bc._slots:
-                s_bc.configure("server_keys", [
-                    _BundleSlot("s_ecdh_pk", "ECDH PK", CLR_ECDH, size_bytes=32),
-                    _BundleSlot("s_kyber_pk", "Kyber PK", CLR_KYBER, size_bytes=1184),
-                ])
-        elif phase not in ("KEYS_READY",) or not p.s_ecdh_pk:
-            if not s_bc.is_complete():
+        server_ready = (not use_ecdh or p.s_ecdh_pk) and (not use_kyber or p.s_kyber_pk)
+        if mode_selected and phase == "KEYS_READY" and server_ready and (use_ecdh or use_kyber):
+            slots = []
+            if use_ecdh:
+                slots.append(_BundleSlot("s_ecdh_pk", "ECDH PK", CLR_ECDH, size_bytes=32))
+            if use_kyber:
+                slots.append(_BundleSlot("s_kyber_pk", "Kyber PK", CLR_KYBER, size_bytes=1184))
+            expected = [s.key for s in slots]
+            current = [s.key for s in s_bc._slots]
+            if s_bc._token_type != "server_keys" or current != expected:
+                s_bc.configure("server_keys", slots)
+        else:
+            if s_bc._slots or s_bc._token_type:
                 s_bc.clear()
 
         # ── Vehicle keys ──────────────────────────────────────
         can_bundle = bundle_complete and phase not in ("PROCESSING", "COMPLETE")
         v_keys = []
-        if p.c_ecdh_pk: v_keys.append(KeyEntry("Vehicle ECDH Public Key (X25519)", p.c_ecdh_pk, CLR_ECDH, _step_with_duration("Step 1/5", p.c_ecdh_pk_time_ms),
+        if mode_selected and use_ecdh and p.c_ecdh_pk: v_keys.append(KeyEntry("Vehicle ECDH Public Key (X25519)", p.c_ecdh_pk, CLR_ECDH, _step_with_duration(f"Step {self._client_step_index('ecdh_keygen')}/{client_steps}", p.c_ecdh_pk_time_ms),
                                                  bundle_key="c_ecdh_pk" if can_bundle else "", size_bytes=32, flow_slot="ecdh_1"))
-        if p.ecdh_ss_c: v_keys.append(KeyEntry("ECDH Shared Secret", p.ecdh_ss_c, CLR_ECDH, _step_with_duration("Step 2/5", p.ecdh_ss_c_time_ms), flow_slot="ecdh_2"))
-        if p.kyber_ct: v_keys.append(KeyEntry("Vehicle Kyber Ciphertext", p.kyber_ct, CLR_KYBER, _step_with_duration("Step 3/5", p.kyber_ss_c_time_ms),
+        if mode_selected and use_ecdh and p.ecdh_ss_c: v_keys.append(KeyEntry("ECDH Shared Secret", p.ecdh_ss_c, CLR_ECDH, _step_with_duration(f"Step {self._client_step_index('ecdh_derive')}/{client_steps}", p.ecdh_ss_c_time_ms), flow_slot="ecdh_2"))
+        if mode_selected and use_kyber and p.kyber_ct: v_keys.append(KeyEntry("Vehicle Kyber Ciphertext", p.kyber_ct, CLR_KYBER, _step_with_duration(f"Step {self._client_step_index('kyber_encap')}/{client_steps}", p.kyber_ss_c_time_ms),
                                                bundle_key="kyber_ct" if can_bundle else "", size_bytes=1088, flow_slot="kyber_1"))
-        if p.kyber_ss_c: v_keys.append(KeyEntry("Kyber Shared Secret", p.kyber_ss_c, CLR_KYBER, _step_with_duration("Step 3/5", p.kyber_ss_c_time_ms), flow_slot="kyber_2"))
-        if p.hybrid_c: v_keys.append(KeyEntry("Hybrid Key", p.hybrid_c, CLR_HYBRID, _step_with_duration("Step 4/5", p.hybrid_c_time_ms), flow_slot="hybrid"))
-        if p.enc_msg:
+        if mode_selected and use_kyber and p.kyber_ss_c: v_keys.append(KeyEntry("Kyber Shared Secret", p.kyber_ss_c, CLR_KYBER, _step_with_duration(f"Step {self._client_step_index('kyber_encap')}/{client_steps}", p.kyber_ss_c_time_ms), flow_slot="kyber_2"))
+        if mode_selected and p.hybrid_c: v_keys.append(KeyEntry("Session Key", p.hybrid_c, CLR_HYBRID, _step_with_duration(f"Step {self._client_step_index('hybrid_key')}/{client_steps}", p.hybrid_c_time_ms), flow_slot="hybrid"))
+        if mode_selected and p.enc_msg:
             enc_bytes = len(p.enc_msg) // 2
-            v_keys.append(KeyEntry("Encrypted Message", p.enc_msg, CLR_CIPHER, _step_with_duration("Step 5/5", p.encrypt_time_ms),
+            v_keys.append(KeyEntry("Encrypted Message", p.enc_msg, CLR_CIPHER, _step_with_duration(f"Step {self._client_step_index('encrypt')}/{client_steps}", p.encrypt_time_ms),
                                     bundle_key="enc_msg" if can_bundle else "", size_bytes=enc_bytes, flow_slot="encrypt_1"))
-        if p.nonce: v_keys.append(KeyEntry("Nonce", p.nonce, CLR_CIPHER, _step_with_duration("Step 5/5", p.encrypt_time_ms),
+        if mode_selected and p.nonce: v_keys.append(KeyEntry("Nonce", p.nonce, CLR_CIPHER, _step_with_duration(f"Step {self._client_step_index('encrypt')}/{client_steps}", p.encrypt_time_ms),
                                             bundle_key="nonce" if can_bundle else "", size_bytes=24, flow_slot="encrypt_2"))
         self.panelA.set_keys(v_keys)
 
+        client_total_ms = _sum_times_ms([
+            p.c_ecdh_pk_time_ms if use_ecdh else None,
+            p.ecdh_ss_c_time_ms if use_ecdh else None,
+            p.kyber_ss_c_time_ms if use_kyber else None,
+            p.hybrid_c_time_ms,
+            p.encrypt_time_ms,
+        ])
+        self.panelA.set_total_time_ms(client_total_ms if mode_selected else None)
+
         # Vehicle bundle collector — show once we have bundle items
         v_bc = self.panelA._bundle_collector
-        if can_bundle and not v_bc.is_complete():
-            if not v_bc._slots:
-                v_bc.configure("client_bundle", [
-                    _BundleSlot("c_ecdh_pk", "ECDH PK", CLR_ECDH, size_bytes=32),
-                    _BundleSlot("kyber_ct", "Kyber CT", CLR_KYBER, size_bytes=1088),
-                    _BundleSlot("nonce", "Nonce", CLR_CIPHER, size_bytes=24),
-                    _BundleSlot("enc_msg", "Enc Msg", CLR_CIPHER, size_bytes=0),
-                ])
-        elif not can_bundle:
-            if not v_bc.is_complete():
+        if mode_selected and can_bundle and (use_ecdh or use_kyber):
+            slots = []
+            if use_ecdh:
+                slots.append(_BundleSlot("c_ecdh_pk", "ECDH PK", CLR_ECDH, size_bytes=32))
+            if use_kyber:
+                slots.append(_BundleSlot("kyber_ct", "Kyber CT", CLR_KYBER, size_bytes=1088))
+            slots.extend([
+                _BundleSlot("nonce", "Nonce", CLR_CIPHER, size_bytes=24),
+                _BundleSlot("enc_msg", "Enc Msg", CLR_CIPHER, size_bytes=0),
+            ])
+            expected = [s.key for s in slots]
+            current = [s.key for s in v_bc._slots]
+            if v_bc._token_type != "client_bundle" or current != expected:
+                v_bc.configure("client_bundle", slots)
+        else:
+            if v_bc._slots or v_bc._token_type:
                 v_bc.clear()
 
         # Drop zones on broker — active when corresponding bundle is complete
-        if s_bc.is_complete() and phase == "KEYS_READY":
+        if mode_selected and s_bc.is_complete() and phase == "KEYS_READY":
             self.broker.drop_server_to_vehicle.activate(True, "⟵ Drop Server Keys\nServer → Vehicle", ["server_keys"])
             self.broker.drop_vehicle_to_server.activate(False)
-        elif v_bc.is_complete() and phase not in ("PROCESSING", "COMPLETE"):
+        elif mode_selected and v_bc.is_complete() and phase not in ("PROCESSING", "COMPLETE"):
             self.broker.drop_vehicle_to_server.activate(True, "⟵ Drop Client Bundle\nVehicle → Server", ["client_bundle"])
             self.broker.drop_server_to_vehicle.activate(False)
         else:

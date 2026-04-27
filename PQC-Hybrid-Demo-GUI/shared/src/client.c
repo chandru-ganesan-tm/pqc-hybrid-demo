@@ -36,6 +36,13 @@
 #define SERVER_PORT       8080
 #define MESSAGE           "Hello, this is a secret message from client!"
 
+#define MODE_ECDH_ONLY    "ecdh"
+#define MODE_PQC_ONLY     "pqc"
+#define MODE_HYBRID       "hybrid"
+
+#define KEX_FLAG_ECDH_PK  0x01
+#define KEX_FLAG_KYBER_CT 0x02
+
 static int server_port = SERVER_PORT;
 
 #define JSON_BUF          8192
@@ -115,6 +122,51 @@ static void json_event(const char *fmt, ...) {
     fflush(stdout);
 }
 
+static void print_keysizes(void)
+{
+    const char *kyber_variant = "Kyber768";
+
+    LOG("Key sizes:\n");
+
+    if (KYBER_K == 2) {
+        kyber_variant = "Kyber512";
+        LOG("Kyber variant: Kyber512\n");
+    } else if (KYBER_K == 3) {
+        kyber_variant = "Kyber768";
+        LOG("Kyber variant: Kyber768\n");
+    } else if (KYBER_K == 4) {
+        kyber_variant = "Kyber1024";
+        LOG("Kyber variant: Kyber1024\n");
+    }
+
+    LOG("CRYPTO_PUBLICKEYBYTES (Kyber pubkey) = %d\n", CRYPTO_PUBLICKEYBYTES);
+    LOG("crypto_kx_PUBLICKEYBYTES (ECDH pubkey) = %d\n", crypto_kx_PUBLICKEYBYTES);
+    LOG("CRYPTO_SECRETKEYBYTES (kyber privkey) = %d\n", CRYPTO_SECRETKEYBYTES);
+    LOG("crypto_kx_SECRETKEYBYTES (ecdhe privkey) = %d\n", crypto_kx_SECRETKEYBYTES);
+    LOG("CRYPTO_BYTES (kyber shared secret) = %d\n", CRYPTO_BYTES);
+    LOG("crypto_kx_SESSIONKEYBYTES (ecdhe shared secret) = %d\n", crypto_kx_SESSIONKEYBYTES);
+    LOG("CRYPTO_CIPHERTEXTBYTES (kyber ciphertext) = %d\n", CRYPTO_CIPHERTEXTBYTES);
+    LOG("HYBRID_KEY_BYTES (final symmetric key) = %d\n", HYBRID_KEY_BYTES);
+    LOG("NONCEBYTES = %d\n", crypto_secretbox_NONCEBYTES);
+
+    json_event("{\"event\":\"keysizes\",\"source\":\"client\","
+               "\"kyber_variant\":\"%s\","
+               "\"kyber_pk\":%d,\"ecdh_pk\":%d,"
+               "\"kyber_sk\":%d,\"ecdh_sk\":%d,"
+               "\"kyber_ss\":%d,\"ecdh_ss\":%d,"
+               "\"kyber_ct\":%d,\"hybrid_key\":%d,\"nonce\":%d}",
+               kyber_variant,
+               CRYPTO_PUBLICKEYBYTES,
+               crypto_kx_PUBLICKEYBYTES,
+               CRYPTO_SECRETKEYBYTES,
+               crypto_kx_SECRETKEYBYTES,
+               CRYPTO_BYTES,
+               crypto_kx_SESSIONKEYBYTES,
+               CRYPTO_CIPHERTEXTBYTES,
+               HYBRID_KEY_BYTES,
+               crypto_secretbox_NONCEBYTES);
+}
+
 
 /* ══════════════════════════════════════════════════════════════════
  *  SECTION: main()
@@ -126,6 +178,9 @@ int main(int argc, char *argv[]) {
 
     const char *server_ip = SERVER_IP;
     const char *message = MESSAGE;
+    const char *kex_mode = MODE_HYBRID;
+    int use_ecdh = 1;
+    int use_kyber = 1;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--debug") == 0 || strcmp(argv[i], "-d") == 0) {
@@ -138,9 +193,23 @@ int main(int argc, char *argv[]) {
         } else if ((strcmp(argv[i], "--msg") == 0 || strcmp(argv[i], "-m") == 0)
                    && i + 1 < argc) {
             message = argv[++i];
+        } else if (strcmp(argv[i], "--kex-mode") == 0 && i + 1 < argc) {
+            kex_mode = argv[++i];
         } else {
             server_ip = argv[i];
         }
+    }
+
+    if (strcmp(kex_mode, MODE_ECDH_ONLY) == 0) {
+        use_ecdh = 1;
+        use_kyber = 0;
+    } else if (strcmp(kex_mode, MODE_PQC_ONLY) == 0) {
+        use_ecdh = 0;
+        use_kyber = 1;
+    } else {
+        kex_mode = MODE_HYBRID;
+        use_ecdh = 1;
+        use_kyber = 1;
     }
 
 
@@ -150,6 +219,8 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "libsodium init failed\n");
         return 1;
     }
+
+    print_keysizes();
 
 
     /* ── Connect to Server ─────────────────────────────────────── */
@@ -179,6 +250,7 @@ int main(int argc, char *argv[]) {
     LOG("Connected to server %s:%d\n", server_ip, server_port);
     json_event("{\"event\":\"connected\",\"server\":\"%s:%d\"}",
                server_ip, server_port);
+    json_event("{\"event\":\"kex_mode_selected\",\"mode\":\"%s\"}", kex_mode);
 
 
     /* ── 1. Receive Server Public Keys ─────────────────────────── */
@@ -214,89 +286,101 @@ int main(int argc, char *argv[]) {
     /* ── 2. Client ECDH Keygen ─────────────────────────────────── */
 
     struct timespec ts_start, ts_end;
-    double ecdhe_keypair_time, ecdhe_derive_time,
-           kyber_encap_time, key_derivation_time, encryption_time;
+        double ecdhe_keypair_time = 0.0, ecdhe_derive_time = 0.0,
+            kyber_encap_time = 0.0, key_derivation_time = 0.0, encryption_time = 0.0;
 
-    unsigned char sender_kx_pk[crypto_kx_PUBLICKEYBYTES];
-    unsigned char sender_kx_sk[crypto_kx_SECRETKEYBYTES];
+    unsigned char sender_kx_pk[crypto_kx_PUBLICKEYBYTES] = {0};
+    unsigned char sender_kx_sk[crypto_kx_SECRETKEYBYTES] = {0};
 
-    clock_gettime(CLOCK_MONOTONIC, &ts_start);
-    if (crypto_kx_keypair(sender_kx_pk, sender_kx_sk) != 0) {
-        fprintf(stderr, "ECDH keypair generation failed\n");
-        close(sock); return 1;
-    }
-    clock_gettime(CLOCK_MONOTONIC, &ts_end);
-    ecdhe_keypair_time = get_time_diff(ts_start, ts_end) * 1000;
+    if (use_ecdh) {
+        clock_gettime(CLOCK_MONOTONIC, &ts_start);
+        if (crypto_kx_keypair(sender_kx_pk, sender_kx_sk) != 0) {
+            fprintf(stderr, "ECDH keypair generation failed\n");
+            close(sock); return 1;
+        }
+        clock_gettime(CLOCK_MONOTONIC, &ts_end);
+        ecdhe_keypair_time = get_time_diff(ts_start, ts_end) * 1000;
 
-    {
-        char hex[HEX_SMALL];
-        to_hex(hex, sender_kx_pk, crypto_kx_PUBLICKEYBYTES);
-        json_event("{\"event\":\"ecdh_keygen\","
-                   "\"pk\":\"%s\",\"time_ms\":%.6f}",
-                   hex, ecdhe_keypair_time);
+        {
+            char hex[HEX_SMALL];
+            to_hex(hex, sender_kx_pk, crypto_kx_PUBLICKEYBYTES);
+            json_event("{\"event\":\"ecdh_keygen\","
+                       "\"pk\":\"%s\",\"time_ms\":%.6f}",
+                       hex, ecdhe_keypair_time);
+        }
     }
 
 
     /* ── 3. ECDH Shared Secret ─────────────────────────────────── */
 
-    unsigned char cli_rx[crypto_kx_SESSIONKEYBYTES];
-    unsigned char cli_tx[crypto_kx_SESSIONKEYBYTES];
+    unsigned char cli_rx[crypto_kx_SESSIONKEYBYTES] = {0};
+    unsigned char cli_tx[crypto_kx_SESSIONKEYBYTES] = {0};
+    unsigned char ecdh_shared[crypto_kx_SESSIONKEYBYTES] = {0};
 
-    clock_gettime(CLOCK_MONOTONIC, &ts_start);
-    if (crypto_kx_client_session_keys(cli_rx, cli_tx,
-            sender_kx_pk, sender_kx_sk, recv_kx_pk) != 0)
-    {
-        fprintf(stderr, "ECDH client key derivation failed\n");
-        close(sock); return 1;
-    }
-    clock_gettime(CLOCK_MONOTONIC, &ts_end);
-    ecdhe_derive_time = get_time_diff(ts_start, ts_end) * 1000;
+    if (use_ecdh) {
+        clock_gettime(CLOCK_MONOTONIC, &ts_start);
+        if (crypto_kx_client_session_keys(cli_rx, cli_tx,
+                sender_kx_pk, sender_kx_sk, recv_kx_pk) != 0)
+        {
+            fprintf(stderr, "ECDH client key derivation failed\n");
+            close(sock); return 1;
+        }
+        clock_gettime(CLOCK_MONOTONIC, &ts_end);
+        ecdhe_derive_time = get_time_diff(ts_start, ts_end) * 1000;
 
-    unsigned char ecdh_shared[crypto_kx_SESSIONKEYBYTES];
-    memcpy(ecdh_shared, cli_tx, crypto_kx_SESSIONKEYBYTES);
+        memcpy(ecdh_shared, cli_tx, crypto_kx_SESSIONKEYBYTES);
 
-    {
-        char hex[HEX_SMALL];
-        to_hex(hex, ecdh_shared, crypto_kx_SESSIONKEYBYTES);
-        json_event("{\"event\":\"ecdh_derive\","
-                   "\"shared\":\"%s\",\"time_ms\":%.6f}",
-                   hex, ecdhe_derive_time);
+        {
+            char hex[HEX_SMALL];
+            to_hex(hex, ecdh_shared, crypto_kx_SESSIONKEYBYTES);
+            json_event("{\"event\":\"ecdh_derive\","
+                       "\"shared\":\"%s\",\"time_ms\":%.6f}",
+                       hex, ecdhe_derive_time);
+        }
     }
 
 
     /* ── 4. Kyber Encapsulation ────────────────────────────────── */
 
-    unsigned char kyber_ct[CRYPTO_CIPHERTEXTBYTES];
-    unsigned char kyber_ss[CRYPTO_BYTES];
+    unsigned char kyber_ct[CRYPTO_CIPHERTEXTBYTES] = {0};
+    unsigned char kyber_ss[CRYPTO_BYTES] = {0};
 
-    clock_gettime(CLOCK_MONOTONIC, &ts_start);
-    if (crypto_kem_enc(kyber_ct, kyber_ss, recv_kyber_pk) != 0) {
-        fprintf(stderr, "Kyber encapsulation failed\n");
-        close(sock); return 1;
-    }
-    clock_gettime(CLOCK_MONOTONIC, &ts_end);
-    kyber_encap_time = get_time_diff(ts_start, ts_end) * 1000;
+    if (use_kyber) {
+        clock_gettime(CLOCK_MONOTONIC, &ts_start);
+        if (crypto_kem_enc(kyber_ct, kyber_ss, recv_kyber_pk) != 0) {
+            fprintf(stderr, "Kyber encapsulation failed\n");
+            close(sock); return 1;
+        }
+        clock_gettime(CLOCK_MONOTONIC, &ts_end);
+        kyber_encap_time = get_time_diff(ts_start, ts_end) * 1000;
 
-    {
-        char hex_ct[HEX_CT];
-        char hex_ss[HEX_SMALL];
-        to_hex(hex_ct, kyber_ct, CRYPTO_CIPHERTEXTBYTES);
-        to_hex(hex_ss, kyber_ss, CRYPTO_BYTES);
-        json_event("{\"event\":\"kyber_encap\","
-                   "\"ct\":\"%s\",\"shared\":\"%s\",\"time_ms\":%.6f}",
-                   hex_ct, hex_ss, kyber_encap_time);
+        {
+            char hex_ct[HEX_CT];
+            char hex_ss[HEX_SMALL];
+            to_hex(hex_ct, kyber_ct, CRYPTO_CIPHERTEXTBYTES);
+            to_hex(hex_ss, kyber_ss, CRYPTO_BYTES);
+            json_event("{\"event\":\"kyber_encap\","
+                       "\"ct\":\"%s\",\"shared\":\"%s\",\"time_ms\":%.6f}",
+                       hex_ct, hex_ss, kyber_encap_time);
+        }
     }
 
 
     /* ── 5. Hybrid Key Derivation ──────────────────────────────── */
 
     unsigned char hybrid_key[HYBRID_KEY_BYTES];
-    unsigned char kdf_input[crypto_kx_SESSIONKEYBYTES + CRYPTO_BYTES];
-    memcpy(kdf_input, ecdh_shared, crypto_kx_SESSIONKEYBYTES);
-    memcpy(kdf_input + crypto_kx_SESSIONKEYBYTES, kyber_ss, CRYPTO_BYTES);
 
     clock_gettime(CLOCK_MONOTONIC, &ts_start);
-    crypto_hash_sha256(hybrid_key, kdf_input, sizeof(kdf_input));
+    if (use_ecdh && use_kyber) {
+        unsigned char kdf_input[crypto_kx_SESSIONKEYBYTES + CRYPTO_BYTES];
+        memcpy(kdf_input, ecdh_shared, crypto_kx_SESSIONKEYBYTES);
+        memcpy(kdf_input + crypto_kx_SESSIONKEYBYTES, kyber_ss, CRYPTO_BYTES);
+        crypto_hash_sha256(hybrid_key, kdf_input, sizeof(kdf_input));
+    } else if (use_ecdh) {
+        crypto_hash_sha256(hybrid_key, ecdh_shared, crypto_kx_SESSIONKEYBYTES);
+    } else {
+        crypto_hash_sha256(hybrid_key, kyber_ss, CRYPTO_BYTES);
+    }
     clock_gettime(CLOCK_MONOTONIC, &ts_end);
     key_derivation_time = get_time_diff(ts_start, ts_end) * 1000;
 
@@ -304,8 +388,8 @@ int main(int argc, char *argv[]) {
         char hex[HEX_SMALL];
         to_hex(hex, hybrid_key, HYBRID_KEY_BYTES);
         json_event("{\"event\":\"hybrid_key\","
-                   "\"key\":\"%s\",\"time_ms\":%.6f}",
-                   hex, key_derivation_time);
+                   "\"mode\":\"%s\",\"key\":\"%s\",\"time_ms\":%.6f}",
+                   kex_mode, hex, key_derivation_time);
     }
 
 
@@ -336,10 +420,21 @@ int main(int argc, char *argv[]) {
 
     /* ── 7. Send Data to Server ────────────────────────────────── */
 
-    if (send_all(sock, sender_kx_pk, crypto_kx_PUBLICKEYBYTES)
-            != crypto_kx_PUBLICKEYBYTES ||
-        send_all(sock, kyber_ct, CRYPTO_CIPHERTEXTBYTES)
-            != CRYPTO_CIPHERTEXTBYTES ||
+    unsigned char proposal_flags = 0;
+    if (use_ecdh) proposal_flags |= KEX_FLAG_ECDH_PK;
+    if (use_kyber) proposal_flags |= KEX_FLAG_KYBER_CT;
+
+    if (send_all(sock, &proposal_flags, sizeof(proposal_flags))
+            != sizeof(proposal_flags))
+    {
+        perror("Failed to send proposal flags");
+        close(sock); return 1;
+    }
+
+    if ((use_ecdh && send_all(sock, sender_kx_pk, crypto_kx_PUBLICKEYBYTES)
+            != crypto_kx_PUBLICKEYBYTES) ||
+        (use_kyber && send_all(sock, kyber_ct, CRYPTO_CIPHERTEXTBYTES)
+            != CRYPTO_CIPHERTEXTBYTES) ||
         send_all(sock, nonce, crypto_secretbox_NONCEBYTES)
             != crypto_secretbox_NONCEBYTES)
     {
@@ -372,9 +467,13 @@ int main(int argc, char *argv[]) {
     }
 
     LOG("Timing Results:\n");
-    LOG("  ECDHE keypair generation: %.6f ms\n", ecdhe_keypair_time);
-    LOG("  ECDHE key derivation:     %.6f ms\n", ecdhe_derive_time);
-    LOG("  Kyber encapsulation:      %.6f ms\n", kyber_encap_time);
+    if (use_ecdh) {
+        LOG("  ECDHE keypair generation: %.6f ms\n", ecdhe_keypair_time);
+        LOG("  ECDHE key derivation:     %.6f ms\n", ecdhe_derive_time);
+    }
+    if (use_kyber) {
+        LOG("  Kyber encapsulation:      %.6f ms\n", kyber_encap_time);
+    }
     LOG("  Hybrid key derivation:    %.6f ms\n", key_derivation_time);
     LOG("  Encryption:               %.6f ms\n", encryption_time);
 

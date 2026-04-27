@@ -3,3 +3,6 @@ tvecs512
 tvecs768
 *.o
 *.log
+local/client
+server
+shared/bin/client

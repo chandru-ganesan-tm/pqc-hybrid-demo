@@ -117,24 +117,47 @@ static void json_event(const char *fmt, ...) {
 
 static void print_keysizes()
 {
-    printf("key sizes:\n");
+    const char *kyber_variant = "Kyber768";
 
-    if(KYBER_K == 2) 
-        printf("Kyber variant: Kyber512\n");
-    else if(KYBER_K == 3) 
-        printf("Kyber variant: Kyber768\n");
-    else if(KYBER_K == 4) 
-        printf("Kyber variant: Kyber1024\n");
+    LOG("Key sizes:\n");
 
-    printf("CRYPTO_PUBLICKEYBYTES (Kyber pubkey) = %d\n", CRYPTO_PUBLICKEYBYTES);
-    printf("crypto_kx_PUBLICKEYBYTES (ECDH pubkey) = %d\n", crypto_kx_PUBLICKEYBYTES);
-    printf("CRYPTO_SECRETKEYBYTES (kyber privkey) = %d\n", CRYPTO_SECRETKEYBYTES);
-    printf("crypto_kx_SECRETKEYBYTES (ecdhe privkey) = %d\n", crypto_kx_SECRETKEYBYTES);
-    printf("CRYPTO_BYTES (kyber shared secret) = %d\n", CRYPTO_BYTES);
-    printf("crypto_kx_SESSIONKEYBYTES (ecdhe shared secret) = %d\n", crypto_kx_SESSIONKEYBYTES);
-    printf("CRYPTO_CIPHERTEXTBYTES (kyber ciphertext) = %d\n", CRYPTO_CIPHERTEXTBYTES);
-    printf("HYBRID_KEY_BYTES (final symmetric key) = %d\n", HYBRID_KEY_BYTES);
-    printf("NONCEBYTES = %d\n", crypto_secretbox_NONCEBYTES);
+    if(KYBER_K == 2) {
+        kyber_variant = "Kyber512";
+        LOG("Kyber variant: Kyber512\n");
+    } else if(KYBER_K == 3) {
+        kyber_variant = "Kyber768";
+        LOG("Kyber variant: Kyber768\n");
+    } else if(KYBER_K == 4) {
+        kyber_variant = "Kyber1024";
+        LOG("Kyber variant: Kyber1024\n");
+    }
+
+    LOG("CRYPTO_PUBLICKEYBYTES (Kyber pubkey) = %d\n", CRYPTO_PUBLICKEYBYTES);
+    LOG("crypto_kx_PUBLICKEYBYTES (ECDH pubkey) = %d\n", crypto_kx_PUBLICKEYBYTES);
+    LOG("CRYPTO_SECRETKEYBYTES (kyber privkey) = %d\n", CRYPTO_SECRETKEYBYTES);
+    LOG("crypto_kx_SECRETKEYBYTES (ecdhe privkey) = %d\n", crypto_kx_SECRETKEYBYTES);
+    LOG("CRYPTO_BYTES (kyber shared secret) = %d\n", CRYPTO_BYTES);
+    LOG("crypto_kx_SESSIONKEYBYTES (ecdhe shared secret) = %d\n", crypto_kx_SESSIONKEYBYTES);
+    LOG("CRYPTO_CIPHERTEXTBYTES (kyber ciphertext) = %d\n", CRYPTO_CIPHERTEXTBYTES);
+    LOG("HYBRID_KEY_BYTES (final symmetric key) = %d\n", HYBRID_KEY_BYTES);
+    LOG("NONCEBYTES = %d\n", crypto_secretbox_NONCEBYTES);
+
+    json_event("{\"event\":\"keysizes\",\"source\":\"client\","
+               "\"kyber_variant\":\"%s\","
+               "\"kyber_pk\":%d,\"ecdh_pk\":%d,"
+               "\"kyber_sk\":%d,\"ecdh_sk\":%d,"
+               "\"kyber_ss\":%d,\"ecdh_ss\":%d,"
+               "\"kyber_ct\":%d,\"hybrid_key\":%d,\"nonce\":%d}",
+               kyber_variant,
+               CRYPTO_PUBLICKEYBYTES,
+               crypto_kx_PUBLICKEYBYTES,
+               CRYPTO_SECRETKEYBYTES,
+               crypto_kx_SECRETKEYBYTES,
+               CRYPTO_BYTES,
+               crypto_kx_SESSIONKEYBYTES,
+               CRYPTO_CIPHERTEXTBYTES,
+               HYBRID_KEY_BYTES,
+               crypto_secretbox_NONCEBYTES);
 }
 
 

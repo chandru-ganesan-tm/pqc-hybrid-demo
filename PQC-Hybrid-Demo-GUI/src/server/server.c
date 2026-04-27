@@ -2,7 +2,7 @@
  *  PQC Hybrid Key Exchange — Server  (phased, GUI-driven)
  *
  *  Flow per exchange:
- *    1. Generate ECDH keypair + load Kyber pk  → report to GUI
+ *    1. Generate ECDH keypair + Kyber keypair  → report to GUI
  *    2. WAIT for client to connect (port 8080)
  *    3. Send public keys to client
  *    4. Receive client bundle (ECDH pk, Kyber ct, nonce, ciphertext)
@@ -30,6 +30,8 @@
 #include <signal.h>
 #include <time.h>
 #include <unistd.h>
+#include <errno.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -38,7 +40,6 @@
 
 #include "./kyber/ref/api.h"
 #include "./kyber/ref/kem.h"
-#include "static_kyber_keys.h"
 
 #define HYBRID_KEY_BYTES  32
 #define PORT              8080
@@ -49,6 +50,9 @@ static int pqc_port = PORT;
 #define HEX_LARGE         (CRYPTO_PUBLICKEYBYTES * 2 + 1)
 #define HEX_CT            (CRYPTO_CIPHERTEXTBYTES * 2 + 1)
 #define CMD_BUF           256
+
+#define KEX_FLAG_ECDH_PK  0x01
+#define KEX_FLAG_KYBER_CT 0x02
 
 
 /* ──────────────────────────────────────────────────────────────────
@@ -119,9 +123,15 @@ static void gui_event(const char *fmt, ...) {
     }
 }
 
-/* Block until the GUI sends a line starting with the expected command. */
+/* Return codes for gui_wait_command / accept_or_reset */
+#define GUI_CMD_OK    0   /* expected command received */
+#define GUI_CMD_RESET 1   /* RESET received — restart exchange */
+#define GUI_CMD_ERR  -1   /* connection lost */
+
+/* Block until the GUI sends the expected command or "RESET".
+ * Returns GUI_CMD_OK, GUI_CMD_RESET, or GUI_CMD_ERR. */
 static int gui_wait_command(const char *expected) {
-    if (gui_fd < 0) return 0;   /* no GUI → don't block */
+    if (gui_fd < 0) return GUI_CMD_OK;   /* no GUI → don't block */
 
     LOG("Waiting for GUI command: %s\n", expected);
 
@@ -131,40 +141,104 @@ static int gui_wait_command(const char *expected) {
     while (1) {
         char c;
         ssize_t r = read(gui_fd, &c, 1);
-        if (r <= 0) { gui_fd = -1; return -1; }
+        if (r <= 0) { gui_fd = -1; return GUI_CMD_ERR; }
         if (c == '\n') {
             buf[pos] = '\0';
-            if (strncmp(buf, expected, strlen(expected)) == 0) {
-                LOG("Received command: %s\n", buf);
-                return 0;
-            }
-            pos = 0;   /* wrong command, keep reading */
+            LOG("Received command: %s\n", buf);
+            if (strncmp(buf, expected, strlen(expected)) == 0) return GUI_CMD_OK;
+            if (strncmp(buf, "RESET", 5)          == 0) return GUI_CMD_RESET;
+            pos = 0;   /* unknown command, keep reading */
         } else if (pos < sizeof(buf) - 1) {
             buf[pos++] = c;
         }
     }
 }
 
+/* Wait for a client connection while also monitoring the GUI fd for a RESET
+ * command.  Returns: connected client fd (>= 0), GUI_CMD_RESET (-1), or
+ * GUI_CMD_ERR (-2) on hard error. */
+static int accept_or_reset(int srv_fd, struct sockaddr_in *addr, int *addrlen) {
+    while (1) {
+        fd_set rfds;
+        FD_ZERO(&rfds);
+        FD_SET(srv_fd, &rfds);
+        if (gui_fd >= 0) FD_SET(gui_fd, &rfds);
+        int nfds = srv_fd + 1;
+        if (gui_fd >= 0 && gui_fd + 1 > nfds) nfds = gui_fd + 1;
+
+        if (select(nfds, &rfds, NULL, NULL, NULL) < 0) {
+            if (errno == EINTR) continue;
+            perror("select");
+            return -2;
+        }
+
+        /* GUI command takes priority — check before accept */
+        if (gui_fd >= 0 && FD_ISSET(gui_fd, &rfds)) {
+            char buf[CMD_BUF];
+            size_t pos = 0;
+            while (pos < sizeof(buf) - 1) {
+                char c;
+                ssize_t r = read(gui_fd, &c, 1);
+                if (r <= 0) { gui_fd = -1; break; }
+                if (c == '\n') { buf[pos] = '\0'; break; }
+                buf[pos++] = c;
+            }
+            buf[pos] = '\0';
+            LOG("accept_or_reset: received command: %s\n", buf);
+            if (strncmp(buf, "RESET", 5) == 0) return GUI_CMD_RESET;
+            /* Unknown command while waiting for client — ignore */
+        }
+
+        if (FD_ISSET(srv_fd, &rfds)) {
+            int cs = accept(srv_fd, (struct sockaddr *)addr, (socklen_t *)addrlen);
+            return cs;
+        }
+    }
+}
+
 static void print_keysizes()
 {
-    printf("key sizes:\n");
+    const char *kyber_variant = "Kyber768";
 
-    if(KYBER_K == 2) 
-        printf("Kyber variant: Kyber512\n");
-    else if(KYBER_K == 3) 
-        printf("Kyber variant: Kyber768\n");
-    else if(KYBER_K == 4) 
-        printf("Kyber variant: Kyber1024\n");
+    LOG("Key sizes:\n");
 
-    printf("CRYPTO_PUBLICKEYBYTES (Kyber pubkey) = %d\n", CRYPTO_PUBLICKEYBYTES);
-    printf("crypto_kx_PUBLICKEYBYTES (ECDH pubkey) = %d\n", crypto_kx_PUBLICKEYBYTES);
-    printf("CRYPTO_SECRETKEYBYTES (kyber privkey) = %d\n", CRYPTO_SECRETKEYBYTES);
-    printf("crypto_kx_SECRETKEYBYTES (ecdhe privkey) = %d\n", crypto_kx_SECRETKEYBYTES);
-    printf("CRYPTO_BYTES (kyber shared secret) = %d\n", CRYPTO_BYTES);
-    printf("crypto_kx_SESSIONKEYBYTES (ecdhe shared secret) = %d\n", crypto_kx_SESSIONKEYBYTES);
-    printf("CRYPTO_CIPHERTEXTBYTES (kyber ciphertext) = %d\n", CRYPTO_CIPHERTEXTBYTES);
-    printf("HYBRID_KEY_BYTES (final symmetric key) = %d\n", HYBRID_KEY_BYTES);
-    printf("NONCEBYTES = %d\n", crypto_secretbox_NONCEBYTES);
+    if(KYBER_K == 2) {
+        kyber_variant = "Kyber512";
+        LOG("Kyber variant: Kyber512\n");
+    } else if(KYBER_K == 3) {
+        kyber_variant = "Kyber768";
+        LOG("Kyber variant: Kyber768\n");
+    } else if(KYBER_K == 4) {
+        kyber_variant = "Kyber1024";
+        LOG("Kyber variant: Kyber1024\n");
+    }
+
+    LOG("CRYPTO_PUBLICKEYBYTES (Kyber pubkey) = %d\n", CRYPTO_PUBLICKEYBYTES);
+    LOG("crypto_kx_PUBLICKEYBYTES (ECDH pubkey) = %d\n", crypto_kx_PUBLICKEYBYTES);
+    LOG("CRYPTO_SECRETKEYBYTES (kyber privkey) = %d\n", CRYPTO_SECRETKEYBYTES);
+    LOG("crypto_kx_SECRETKEYBYTES (ecdhe privkey) = %d\n", crypto_kx_SECRETKEYBYTES);
+    LOG("CRYPTO_BYTES (kyber shared secret) = %d\n", CRYPTO_BYTES);
+    LOG("crypto_kx_SESSIONKEYBYTES (ecdhe shared secret) = %d\n", crypto_kx_SESSIONKEYBYTES);
+    LOG("CRYPTO_CIPHERTEXTBYTES (kyber ciphertext) = %d\n", CRYPTO_CIPHERTEXTBYTES);
+    LOG("HYBRID_KEY_BYTES (final symmetric key) = %d\n", HYBRID_KEY_BYTES);
+    LOG("NONCEBYTES = %d\n", crypto_secretbox_NONCEBYTES);
+
+    gui_event("{\"event\":\"keysizes\",\"source\":\"server\","
+              "\"kyber_variant\":\"%s\","
+              "\"kyber_pk\":%d,\"ecdh_pk\":%d,"
+              "\"kyber_sk\":%d,\"ecdh_sk\":%d,"
+              "\"kyber_ss\":%d,\"ecdh_ss\":%d,"
+              "\"kyber_ct\":%d,\"hybrid_key\":%d,\"nonce\":%d}",
+              kyber_variant,
+              CRYPTO_PUBLICKEYBYTES,
+              crypto_kx_PUBLICKEYBYTES,
+              CRYPTO_SECRETKEYBYTES,
+              crypto_kx_SECRETKEYBYTES,
+              CRYPTO_BYTES,
+              crypto_kx_SESSIONKEYBYTES,
+              CRYPTO_CIPHERTEXTBYTES,
+              HYBRID_KEY_BYTES,
+              crypto_secretbox_NONCEBYTES);
 }
 
 
@@ -196,8 +270,6 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "libsodium init failed\n");
         return 1;
     }
-
-    print_keysizes();
 
     /* ── PQC Listener Socket (port 8080) ───────────────────────── */
 
@@ -263,6 +335,8 @@ int main(int argc, char *argv[]) {
         gui_event("{\"event\":\"gui_connected\"}");
     }
 
+    /* Emit key-size logs/events only after GUI fd is available. */
+    print_keysizes();
     gui_event("{\"event\":\"listening\",\"port\":%d}", pqc_port);
 
 
@@ -299,13 +373,19 @@ int main(int argc, char *argv[]) {
 
         unsigned char recv_kyber_pk[CRYPTO_PUBLICKEYBYTES];
         unsigned char recv_kyber_sk[CRYPTO_SECRETKEYBYTES];
-        memcpy(recv_kyber_pk, SERVER_KYBER_PK, CRYPTO_PUBLICKEYBYTES);
-        memcpy(recv_kyber_sk, SERVER_KYBER_SK, CRYPTO_SECRETKEYBYTES);
+
+        clock_gettime(CLOCK_MONOTONIC, &ts0);
+        if (crypto_kem_keypair(recv_kyber_pk, recv_kyber_sk) != 0) {
+            fprintf(stderr, "Kyber keygen failed\n"); continue;
+        }
+        clock_gettime(CLOCK_MONOTONIC, &ts1);
+        t = get_time_diff(ts0, ts1) * 1000;
 
         {
             char hex[HEX_LARGE];
             to_hex(hex, recv_kyber_pk, CRYPTO_PUBLICKEYBYTES);
-            gui_event("{\"event\":\"kyber_pk_loaded\",\"pk\":\"%s\"}", hex);
+            gui_event("{\"event\":\"kyber_pk_loaded\",\"pk\":\"%s\",\"time_ms\":%.6f}",
+                      hex, t);
         }
 
         gui_event("{\"event\":\"phase\",\"phase\":\"keys_ready\"}");
@@ -316,9 +396,12 @@ int main(int argc, char *argv[]) {
          *  Blocks here until the GUI triggers the board client.    *
          * ────────────────────────────────────────────────────────── */
 
-        int cs = accept(server_fd,
-                        (struct sockaddr *)&address,
-                        (socklen_t *)&addrlen);
+        int cs = accept_or_reset(server_fd, &address, &addrlen);
+        if (cs == GUI_CMD_RESET) {
+            LOG("RESET received — regenerating keys.\n");
+            gui_event("{\"event\":\"phase\",\"phase\":\"reset\"}");
+            continue;
+        }
         if (cs < 0) { perror("accept"); continue; }
 
         const char *cip   = inet_ntoa(address.sin_addr);
@@ -346,13 +429,41 @@ int main(int argc, char *argv[]) {
         unsigned char kyber_ct[CRYPTO_CIPHERTEXTBYTES];
         unsigned char nonce[crypto_secretbox_NONCEBYTES];
         unsigned char ciphertext[1024];
+        unsigned char proposal_flags = 0;
         uint32_t      ct_len_net;
         size_t        ct_len;
 
-        if (recv_all(cs, sender_kx_pk, crypto_kx_PUBLICKEYBYTES)
-                != crypto_kx_PUBLICKEYBYTES ||
-            recv_all(cs, kyber_ct, CRYPTO_CIPHERTEXTBYTES)
-                != CRYPTO_CIPHERTEXTBYTES ||
+        int has_ecdh = 0;
+        int has_kyber = 0;
+        const char *kex_mode = "hybrid";
+
+        if (recv_all(cs, &proposal_flags, sizeof(proposal_flags))
+                != sizeof(proposal_flags))
+        {
+            perror("recv proposal flags"); close(cs); continue;
+        }
+
+        has_ecdh = (proposal_flags & KEX_FLAG_ECDH_PK) != 0;
+        has_kyber = (proposal_flags & KEX_FLAG_KYBER_CT) != 0;
+
+        if (!has_ecdh && !has_kyber) {
+            fprintf(stderr, "Invalid client proposal: no key material\n");
+            close(cs); continue;
+        }
+
+        if (has_ecdh && !has_kyber) {
+            kex_mode = "ecdh";
+        } else if (!has_ecdh && has_kyber) {
+            kex_mode = "pqc";
+        }
+
+        memset(sender_kx_pk, 0, sizeof(sender_kx_pk));
+        memset(kyber_ct, 0, sizeof(kyber_ct));
+
+        if ((has_ecdh && recv_all(cs, sender_kx_pk, crypto_kx_PUBLICKEYBYTES)
+                != crypto_kx_PUBLICKEYBYTES) ||
+            (has_kyber && recv_all(cs, kyber_ct, CRYPTO_CIPHERTEXTBYTES)
+                != CRYPTO_CIPHERTEXTBYTES) ||
             recv_all(cs, nonce, crypto_secretbox_NONCEBYTES)
                 != crypto_secretbox_NONCEBYTES ||
             recv_all(cs, &ct_len_net, sizeof(uint32_t))
@@ -370,11 +481,20 @@ int main(int argc, char *argv[]) {
         }
 
         {
-            char hex_pk[HEX_SMALL], hex_ct[HEX_CT];
-            to_hex(hex_pk, sender_kx_pk, crypto_kx_PUBLICKEYBYTES);
-            to_hex(hex_ct, kyber_ct, CRYPTO_CIPHERTEXTBYTES);
+            char hex_pk[HEX_SMALL] = "";
+            char hex_ct[HEX_CT] = "";
+            if (has_ecdh) {
+                to_hex(hex_pk, sender_kx_pk, crypto_kx_PUBLICKEYBYTES);
+            }
+            if (has_kyber) {
+                to_hex(hex_ct, kyber_ct, CRYPTO_CIPHERTEXTBYTES);
+            }
             gui_event("{\"event\":\"client_data_received\","
+                      "\"mode\":\"%s\",\"has_ecdh\":%s,\"has_kyber\":%s,"
                       "\"ecdh_pk\":\"%s\",\"kyber_ct\":\"%s\"}",
+                      kex_mode,
+                      has_ecdh ? "true" : "false",
+                      has_kyber ? "true" : "false",
                       hex_pk, hex_ct);
         }
 
@@ -387,60 +507,79 @@ int main(int argc, char *argv[]) {
          *  which sends "PROCESS\n" to this socket.                 *
          * ────────────────────────────────────────────────────────── */
 
-        if (gui_wait_command("PROCESS") < 0) {
-            LOG("GUI disconnected while waiting\n");
+        {
+            int cmd = gui_wait_command("PROCESS");
+            if (cmd == GUI_CMD_RESET) {
+                LOG("RESET received during PROCESS wait — aborting exchange.\n");
+                close(cs);
+                gui_event("{\"event\":\"phase\",\"phase\":\"reset\"}");
+                continue;
+            }
+            if (cmd == GUI_CMD_ERR) {
+                LOG("GUI disconnected while waiting for PROCESS\n");
+            }
         }
 
 
         /* ── Phase 6: Process — ECDH + Kyber + Decrypt ─────────── */
 
         /* 6a. ECDH shared secret */
-        unsigned char srv_rx[crypto_kx_SESSIONKEYBYTES];
-        unsigned char srv_tx[crypto_kx_SESSIONKEYBYTES];
+        unsigned char srv_rx[crypto_kx_SESSIONKEYBYTES] = {0};
+        unsigned char srv_tx[crypto_kx_SESSIONKEYBYTES] = {0};
+        unsigned char ecdh_shared[crypto_kx_SESSIONKEYBYTES] = {0};
 
-        clock_gettime(CLOCK_MONOTONIC, &ts0);
-        if (crypto_kx_server_session_keys(srv_rx, srv_tx,
-                recv_kx_pk, recv_kx_sk, sender_kx_pk) != 0) {
-            fprintf(stderr, "ECDH derive failed\n"); close(cs); continue;
-        }
-        clock_gettime(CLOCK_MONOTONIC, &ts1);
-        t = get_time_diff(ts0, ts1) * 1000;
+        if (has_ecdh) {
+            clock_gettime(CLOCK_MONOTONIC, &ts0);
+            if (crypto_kx_server_session_keys(srv_rx, srv_tx,
+                    recv_kx_pk, recv_kx_sk, sender_kx_pk) != 0) {
+                fprintf(stderr, "ECDH derive failed\n"); close(cs); continue;
+            }
+            clock_gettime(CLOCK_MONOTONIC, &ts1);
+            t = get_time_diff(ts0, ts1) * 1000;
 
-        unsigned char ecdh_shared[crypto_kx_SESSIONKEYBYTES];
-        memcpy(ecdh_shared, srv_rx, crypto_kx_SESSIONKEYBYTES);
+            memcpy(ecdh_shared, srv_rx, crypto_kx_SESSIONKEYBYTES);
 
-        {
-            char hex[HEX_SMALL];
-            to_hex(hex, ecdh_shared, crypto_kx_SESSIONKEYBYTES);
-            gui_event("{\"event\":\"ecdh_derive\","
-                      "\"shared\":\"%s\",\"time_ms\":%.6f}", hex, t);
+            {
+                char hex[HEX_SMALL];
+                to_hex(hex, ecdh_shared, crypto_kx_SESSIONKEYBYTES);
+                gui_event("{\"event\":\"ecdh_derive\","
+                          "\"shared\":\"%s\",\"time_ms\":%.6f}", hex, t);
+            }
         }
 
         /* 6b. Kyber decapsulation */
-        unsigned char kyber_ss[CRYPTO_BYTES];
+        unsigned char kyber_ss[CRYPTO_BYTES] = {0};
 
-        clock_gettime(CLOCK_MONOTONIC, &ts0);
-        if (crypto_kem_dec(kyber_ss, kyber_ct, recv_kyber_sk) != 0) {
-            fprintf(stderr, "Kyber decap failed\n"); close(cs); continue;
-        }
-        clock_gettime(CLOCK_MONOTONIC, &ts1);
-        t = get_time_diff(ts0, ts1) * 1000;
+        if (has_kyber) {
+            clock_gettime(CLOCK_MONOTONIC, &ts0);
+            if (crypto_kem_dec(kyber_ss, kyber_ct, recv_kyber_sk) != 0) {
+                fprintf(stderr, "Kyber decap failed\n"); close(cs); continue;
+            }
+            clock_gettime(CLOCK_MONOTONIC, &ts1);
+            t = get_time_diff(ts0, ts1) * 1000;
 
-        {
-            char hex[HEX_SMALL];
-            to_hex(hex, kyber_ss, CRYPTO_BYTES);
-            gui_event("{\"event\":\"kyber_decap\","
-                      "\"shared\":\"%s\",\"time_ms\":%.6f}", hex, t);
+            {
+                char hex[HEX_SMALL];
+                to_hex(hex, kyber_ss, CRYPTO_BYTES);
+                gui_event("{\"event\":\"kyber_decap\","
+                          "\"shared\":\"%s\",\"time_ms\":%.6f}", hex, t);
+            }
         }
 
         /* 6c. Hybrid KDF */
         unsigned char hybrid_key[HYBRID_KEY_BYTES];
-        unsigned char kdf_in[crypto_kx_SESSIONKEYBYTES + CRYPTO_BYTES];
-        memcpy(kdf_in, ecdh_shared, crypto_kx_SESSIONKEYBYTES);
-        memcpy(kdf_in + crypto_kx_SESSIONKEYBYTES, kyber_ss, CRYPTO_BYTES);
 
         clock_gettime(CLOCK_MONOTONIC, &ts0);
-        crypto_hash_sha256(hybrid_key, kdf_in, sizeof(kdf_in));
+        if (has_ecdh && has_kyber) {
+            unsigned char kdf_in[crypto_kx_SESSIONKEYBYTES + CRYPTO_BYTES];
+            memcpy(kdf_in, ecdh_shared, crypto_kx_SESSIONKEYBYTES);
+            memcpy(kdf_in + crypto_kx_SESSIONKEYBYTES, kyber_ss, CRYPTO_BYTES);
+            crypto_hash_sha256(hybrid_key, kdf_in, sizeof(kdf_in));
+        } else if (has_ecdh) {
+            crypto_hash_sha256(hybrid_key, ecdh_shared, crypto_kx_SESSIONKEYBYTES);
+        } else {
+            crypto_hash_sha256(hybrid_key, kyber_ss, CRYPTO_BYTES);
+        }
         clock_gettime(CLOCK_MONOTONIC, &ts1);
         t = get_time_diff(ts0, ts1) * 1000;
 
@@ -448,7 +587,8 @@ int main(int argc, char *argv[]) {
             char hex[HEX_SMALL];
             to_hex(hex, hybrid_key, HYBRID_KEY_BYTES);
             gui_event("{\"event\":\"hybrid_key\","
-                      "\"key\":\"%s\",\"time_ms\":%.6f}", hex, t);
+                      "\"mode\":\"%s\",\"key\":\"%s\",\"time_ms\":%.6f}",
+                      kex_mode, hex, t);
         }
 
         /* 6d. Decrypt */
@@ -481,9 +621,13 @@ int main(int argc, char *argv[]) {
         close(cs);
         LOG("Exchange done — waiting for NEXT command.\n\n");
 
-        /* ── Phase 8: Wait for GUI "NEXT" before new round ────── */
-        if (gui_wait_command("NEXT") < 0) {
-            LOG("GUI disconnected while waiting for NEXT\n");
+        /* ── Phase 8: Wait for GUI "NEXT" or "RESET" before new round ────── */
+        {
+            int cmd = gui_wait_command("NEXT");
+            if (cmd == GUI_CMD_ERR) {
+                LOG("GUI disconnected while waiting for NEXT\n");
+            }
+            /* GUI_CMD_RESET here just restarts the loop (same as NEXT) */
         }
     }
 
